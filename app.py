@@ -90,23 +90,23 @@ else:
 
     camera = "Kozesa Camera"
 
-    analyze = "🔍 KEENNEENYA EKIKOOLO"
+    analyze = " KEENNEENYA EKIKOOLO"
 
-    prediction_title = "🌿 Obuvumbuzi bwa AI"
+    prediction_title = " Obuvumbuzi bwa AI"
 
-    top_predictions = "🔎 Obuvumbuzi 5 Obusinga Okuba Waggulu"
+    top_predictions = " Obuvumbuzi 5 Obusinga Okuba Waggulu"
 
-    disease_info = "📚 Ebikwata ku Bulwadde"
+    disease_info = " Ebikwata ku Bulwadde"
 
-    advice = "💡 Amagezi g'Okulabirira Ekimera"
+    advice = " Amagezi g'Okulabirira Ekimera"
 
-    prevention = "🛡️ Engeri y'Okwewala Obulwadde"
+    prevention = " Engeri y'Okwewala Obulwadde"
 
-    history_title = "📜 Eby'okwekeneenya ebyayita"
+    history_title = " Eby'okwekeneenya ebyayita"
 
-    about = "📖 Ebikwata ku Pulojekiti"
+    about = "Ebikwata ku Pulojekiti"
 
-    download = "📄 Wanula Lipoota"
+    download = " Wanula Lipoota"
 
 
 # =========================================================
