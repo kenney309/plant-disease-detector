@@ -8,7 +8,7 @@ from datetime import datetime
 
 
 # =========================================================
-# PAGE SETTINGS
+# PAGE CONFIGURATION
 # =========================================================
 
 st.set_page_config(
@@ -19,11 +19,17 @@ st.set_page_config(
 
 
 # =========================================================
-# SESSION HISTORY
+# SESSION STATE
 # =========================================================
 
 if "history" not in st.session_state:
     st.session_state.history = []
+
+if "last_prediction" not in st.session_state:
+    st.session_state.last_prediction = None
+
+if "last_confidence" not in st.session_state:
+    st.session_state.last_confidence = 0.0
 
 
 # =========================================================
@@ -41,72 +47,21 @@ if language == "English":
     title = "🌿 Smart Plant Disease Detector"
 
     description = (
-        "Upload or capture a clear image of a plant leaf. "
-        "The AI will analyze the image and provide a possible "
-        "plant disease prediction, confidence score and advice."
+        "An AI-powered smart agriculture system that "
+        "analyzes plant leaf images and provides possible "
+        "disease predictions, confidence scores and "
+        "general agricultural advice."
     )
-
-    choose_plant = "🌱 Select the Plant"
-
-    choose_image = "📷 Choose Your Leaf Image"
-
-    upload = "Upload Image"
-
-    camera = "Use Camera"
-
-    analyze = "🔍 ANALYZE LEAF"
-
-    prediction_title = "🌿 AI Prediction"
-
-    top_predictions = "🔎 Top 5 AI Predictions"
-
-    disease_info = "📚 Disease Information"
-
-    advice = "💡 Management Advice"
-
-    prevention = "🛡️ Prevention Tips"
-
-    history_title = "📜 Analysis History"
-
-    about = "📖 About the Project"
-
-    download = "📄 Download Analysis Report"
 
 else:
 
-    title = "🌿 Pulogulaamu Eyekenneenya Obulwadde bw'Ebimera"
+    title = "🌿 Pulogulaamu y'okukebera Obulwadde bw'Ebimera"
 
     description = (
-        "Teekamu oba kwata ekifaananyi ekitegeerekeka obulungi "
-        "eky'ekikoola ky'ekimera. AI ejja kwekenneenya ekifaananyi "
-        "n'okuwa obuvumbuzi n'amagezi."
+        "Pulogulaamu ya AI ekebera ebifaananyi by'ebikoola "
+        "by'ebimera n'okuwa obuvumbuzi n'amagezi agakwata "
+        "ku kulabirira ebimera."
     )
-
-    choose_plant = "🌱 Londa Ekika ky'Ekimera"
-
-    choose_image = "📷 Londa Ekifaananyi ky'Ekikoola"
-
-    upload = "Teekamu Ekifaananyi"
-
-    camera = "Kozesa Camera"
-
-    analyze = " KEENNEENYA EKIKOOLO"
-
-    prediction_title = " Obuvumbuzi bwa AI"
-
-    top_predictions = " Obuvumbuzi 5 Obusinga Okuba Waggulu"
-
-    disease_info = " Ebikwata ku Bulwadde"
-
-    advice = " Amagezi g'Okulabirira Ekimera"
-
-    prevention = " Engeri y'Okwewala Obulwadde"
-
-    history_title = " Eby'okwekeneenya ebyayita"
-
-    about = "Ebikwata ku Pulojekiti"
-
-    download = " Wanula Lipoota"
 
 
 # =========================================================
@@ -118,42 +73,15 @@ st.title(title)
 st.write(description)
 
 st.info(
-    "📸 Use a clear close-up image of one leaf with good lighting."
+    "📸 For better results, use a clear close-up image "
+    "of one plant leaf with good lighting."
 )
 
 st.divider()
 
 
 # =========================================================
-# PLANTS SUPPORTED BY THE MODEL
-# =========================================================
-
-SUPPORTED_PLANTS = [
-    "Apple",
-    "Blueberry",
-    "Cherry",
-    "Corn",
-    "Grape",
-    "Orange",
-    "Peach",
-    "Pepper",
-    "Potato",
-    "Raspberry",
-    "Soybean",
-    "Squash",
-    "Strawberry",
-    "Tomato"
-]
-
-
-plant = st.selectbox(
-    choose_plant,
-    SUPPORTED_PLANTS
-)
-
-
-# =========================================================
-# MODEL
+# MODEL INFORMATION
 # =========================================================
 
 MODEL_URL = (
@@ -212,7 +140,37 @@ CLASS_NAMES = [
 
 
 # =========================================================
-# LOAD MODEL
+# PLANTS
+# =========================================================
+
+SUPPORTED_PLANTS = [
+    "Apple",
+    "Blueberry",
+    "Cherry",
+    "Corn",
+    "Grape",
+    "Orange",
+    "Peach",
+    "Pepper",
+    "Potato",
+    "Raspberry",
+    "Soybean",
+    "Squash",
+    "Strawberry",
+    "Tomato"
+]
+
+
+st.subheader("🌱 Select the Plant")
+
+plant = st.selectbox(
+    "Choose the plant you are analyzing:",
+    SUPPORTED_PLANTS
+)
+
+
+# =========================================================
+# MODEL LOADING
 # =========================================================
 
 @st.cache_resource
@@ -246,9 +204,13 @@ def load_model():
 
     interpreter.allocate_tensors()
 
-    input_details = interpreter.get_input_details()
+    input_details = (
+        interpreter.get_input_details()
+    )
 
-    output_details = interpreter.get_output_details()
+    output_details = (
+        interpreter.get_output_details()
+    )
 
     return (
         interpreter,
@@ -302,7 +264,7 @@ def check_image_quality(image):
 
 
 # =========================================================
-# PREDICTION
+# PREDICTION FUNCTION
 # =========================================================
 
 def predict_leaf(image):
@@ -313,11 +275,17 @@ def predict_leaf(image):
         output_details
     ) = load_model()
 
-    input_shape = input_details[0]["shape"]
+    input_shape = (
+        input_details[0]["shape"]
+    )
 
-    height = int(input_shape[1])
+    height = int(
+        input_shape[1]
+    )
 
-    width = int(input_shape[2])
+    width = int(
+        input_shape[2]
+    )
 
     image = image.resize(
         (width, height)
@@ -327,13 +295,6 @@ def predict_leaf(image):
         image,
         dtype=np.float32
     )
-
-    # IMPORTANT:
-    # This must match the preprocessing used
-    # when the original AI model was trained.
-    #
-    # The current model is being given pixel values
-    # without dividing by 255.
 
     image_array = np.expand_dims(
         image_array,
@@ -356,8 +317,7 @@ def predict_leaf(image):
         dtype=np.float32
     )
 
-    # Convert output to probabilities if necessary
-
+    # Convert model output into probabilities
     if (
         np.min(predictions) < 0
         or np.max(predictions) > 1
@@ -407,8 +367,7 @@ DISEASE_INFO = {
 
     "Apple - Apple Scab":
         "Apple scab is a fungal disease that can affect "
-        "apple leaves and fruit. It commonly causes dark "
-        "or olive-colored spots.",
+        "apple leaves and fruit.",
 
     "Apple - Black Rot":
         "Black rot is a fungal disease that can affect "
@@ -416,11 +375,11 @@ DISEASE_INFO = {
 
     "Apple - Cedar Apple Rust":
         "Cedar apple rust is a fungal disease that can "
-        "cause yellow or orange-colored symptoms on leaves.",
+        "cause yellow or orange symptoms on leaves.",
 
     "Corn - Common Rust":
         "Common rust is a fungal disease of corn that "
-        "can produce reddish-brown rust-like spots.",
+        "can produce reddish-brown spots.",
 
     "Corn - Northern Leaf Blight":
         "Northern leaf blight can cause long gray or "
@@ -457,7 +416,7 @@ DISEASE_INFO = {
 
 
 # =========================================================
-# MANAGEMENT ADVICE
+# GENERAL ADVICE
 # =========================================================
 
 def show_advice():
@@ -521,7 +480,7 @@ def show_prevention():
     )
 
     st.write(
-        "👨‍🌾 Follow advice from agricultural professionals."
+        "👨‍🌾 Follow agricultural expert recommendations."
     )
 
 
@@ -530,23 +489,22 @@ def show_prevention():
 # =========================================================
 
 st.subheader(
-    choose_image
+    "📷 Choose Your Leaf Image"
 )
 
 input_method = st.radio(
     "Select an option:",
     [
-        upload,
-        camera
+        "Upload Image",
+        "Use Camera"
     ],
     horizontal=True
 )
 
-
 uploaded_file = None
 
 
-if input_method == upload:
+if input_method == "Upload Image":
 
     uploaded_file = st.file_uploader(
         "Upload a clear plant leaf image",
@@ -565,7 +523,7 @@ else:
 
 
 # =========================================================
-# ANALYSIS
+# IMAGE DISPLAY
 # =========================================================
 
 if uploaded_file is not None:
@@ -576,15 +534,13 @@ if uploaded_file is not None:
 
     st.image(
         image,
-        caption="Selected Plant Leaf",
+        caption="🌿 Selected Plant Leaf",
         use_container_width=True
     )
-
 
     quality_ok, quality_message = (
         check_image_quality(image)
     )
-
 
     if quality_ok:
 
@@ -599,11 +555,12 @@ if uploaded_file is not None:
         )
 
 
-    st.divider()
-
+    # =====================================================
+    # ANALYZE BUTTON
+    # =====================================================
 
     if st.button(
-        analyze,
+        "🔍 ANALYZE LEAF",
         use_container_width=True
     ):
 
@@ -627,27 +584,38 @@ if uploaded_file is not None:
                 st.stop()
 
 
-            best_result = results[0]
+            prediction = (
+                results[0]["name"]
+            )
 
-            prediction = best_result["name"]
+            confidence = (
+                results[0]["confidence"]
+            )
 
-            confidence = best_result["confidence"]
-
-            analysis_time = datetime.now().strftime(
-                "%Y-%m-%d %H:%M:%S"
+            analysis_time = (
+                datetime.now().strftime(
+                    "%Y-%m-%d %H:%M:%S"
+                )
             )
 
 
-            # =================================================
+            st.session_state.last_prediction = (
+                prediction
+            )
+
+            st.session_state.last_confidence = (
+                confidence
+            )
+
+
+            # =============================================
             # MAIN RESULT
-            # =================================================
+            # =============================================
 
-            st.success(
-                "✅ Analysis Complete!"
-            )
+            st.divider()
 
             st.subheader(
-                prediction_title
+                "🌿 AI Prediction"
             )
 
             st.write(
@@ -679,13 +647,15 @@ if uploaded_file is not None:
             )
 
 
-            # =================================================
-            # CHECK PLANT MATCH
-            # =================================================
+            # =============================================
+            # PLANT MATCH WARNING
+            # =============================================
 
-            predicted_plant = prediction.split(
-                " - "
-            )[0]
+            predicted_plant = (
+                prediction.split(
+                    " - "
+                )[0]
+            )
 
 
             if predicted_plant != plant:
@@ -703,9 +673,9 @@ if uploaded_file is not None:
                 )
 
 
-            # =================================================
-            # CONFIDENCE
-            # =================================================
+            # =============================================
+            # CONFIDENCE MESSAGE
+            # =============================================
 
             if confidence < 0.40:
 
@@ -714,8 +684,8 @@ if uploaded_file is not None:
                 )
 
                 st.write(
-                    "The AI is not confident about this prediction. "
-                    "The result may be incorrect."
+                    "The AI is not confident about this "
+                    "prediction. The result may be incorrect."
                 )
 
                 st.write(
@@ -752,19 +722,17 @@ if uploaded_file is not None:
                 )
 
 
-            # =================================================
-            # TOP 5
-            # =================================================
+            # =============================================
+            # TOP 5 PREDICTIONS
+            # =============================================
 
             st.divider()
 
             st.subheader(
-                top_predictions
+                "🔎 Top 5 AI Predictions"
             )
 
-
             chart_data = {}
-
 
             for number, result in enumerate(
                 results,
@@ -788,14 +756,14 @@ if uploaded_file is not None:
             )
 
 
-            # =================================================
+            # =============================================
             # DISEASE INFORMATION
-            # =================================================
+            # =============================================
 
             st.divider()
 
             st.subheader(
-                disease_info
+                "📚 Disease Information"
             )
 
 
@@ -827,35 +795,35 @@ if uploaded_file is not None:
                 )
 
 
-            # =================================================
-            # MANAGEMENT
-            # =================================================
+            # =============================================
+            # MANAGEMENT ADVICE
+            # =============================================
 
             st.divider()
 
             st.subheader(
-                advice
+                "💡 Recommended Actions"
             )
 
             show_advice()
 
 
-            # =================================================
+            # =============================================
             # PREVENTION
-            # =================================================
+            # =============================================
 
             st.divider()
 
             st.subheader(
-                prevention
+                "🛡️ Prevention Tips"
             )
 
             show_prevention()
 
 
-            # =================================================
+            # =============================================
             # SAVE HISTORY
-            # =================================================
+            # =============================================
 
             st.session_state.history.append(
                 {
@@ -868,97 +836,6 @@ if uploaded_file is not None:
             )
 
 
-            # =================================================
-            # DOWNLOAD REPORT
-            # =================================================
-
-            st.divider()
-
-            st.subheader(
-                download
-            )
-
-
-            report = f"""
-SMART PLANT DISEASE DETECTOR
-========================================
-
-PLANT SELECTED
-{plant}
-
-ANALYSIS TIME
-{analysis_time}
-
-AI PREDICTION
-{prediction}
-
-CONFIDENCE
-{confidence * 100:.2f}%
-
-
-TOP 5 AI PREDICTIONS
-========================================
-"""
-
-
-            for number, result in enumerate(
-                results,
-                start=1
-            ):
-
-                report += (
-                    f"{number}. "
-                    f"{result['name']} - "
-                    f"{result['confidence'] * 100:.2f}%\n"
-                )
-
-
-            report += """
-
-GENERAL ADVICE
-========================================
-
-Inspect the plant and nearby plants.
-
-Keep the growing area clean.
-
-Monitor the plant regularly.
-
-Improve air circulation.
-
-Avoid unnecessary wetting of leaves.
-
-Consult an agricultural expert for confirmation.
-
-
-IMPORTANT NOTICE
-========================================
-
-This AI system provides a supporting prediction.
-It does not replace professional agricultural
-diagnosis.
-
-Confirm important disease diagnoses with a
-qualified agricultural professional.
-
-
-SMART PLANT DISEASE DETECTOR
-AI FOR SMART AGRICULTURE
-========================================
-"""
-
-
-            st.download_button(
-                label=download,
-                data=report,
-                file_name=(
-                    "plant_disease_analysis_report.txt"
-                ),
-                mime="text/plain",
-                use_container_width=True
-            )
-
-
         except Exception as error:
 
             st.error(
@@ -966,7 +843,7 @@ AI FOR SMART AGRICULTURE
                 "the image."
             )
 
-            st.write(
+            st.code(
                 str(error)
             )
 
@@ -980,13 +857,199 @@ else:
 
 
 # =========================================================
+# PLANT DOCTOR
+# =========================================================
+
+st.divider()
+
+st.subheader(
+    "🎤 Ask the Plant Doctor"
+)
+
+st.write(
+    "Ask a question about plant diseases, "
+    "prevention or management."
+)
+
+question = st.text_input(
+    "💬 Type your question here:"
+)
+
+
+if st.button(
+    "🤖 GET PLANT ADVICE",
+    use_container_width=True
+):
+
+    if question.strip() == "":
+
+        st.warning(
+            "Please type a question first."
+        )
+
+    else:
+
+        question_lower = (
+            question.lower()
+        )
+
+        st.success(
+            "🌿 Plant Doctor Advice"
+        )
+
+
+        if (
+            "what is" in question_lower
+            or "meaning" in question_lower
+        ):
+
+            st.write(
+                "The AI prediction represents a possible "
+                "plant health condition identified from "
+                "the uploaded image."
+            )
+
+            st.write(
+                "For an accurate diagnosis, compare the "
+                "symptoms with reliable agricultural "
+                "information and consult an expert."
+            )
+
+
+        elif (
+            "treat" in question_lower
+            or "treatment" in question_lower
+            or "cure" in question_lower
+        ):
+
+            st.write(
+                "🌱 Confirm the diagnosis first."
+            )
+
+            st.write(
+                "🔍 Inspect nearby plants."
+            )
+
+            st.write(
+                "🍂 Remove severely affected plant material "
+                "where appropriate."
+            )
+
+            st.write(
+                "🌬️ Improve air circulation."
+            )
+
+            st.write(
+                "💧 Avoid unnecessary wetting of leaves."
+            )
+
+            st.write(
+                "👨‍🌾 Consult an agricultural expert."
+            )
+
+
+        elif (
+            "prevent" in question_lower
+            or "avoid" in question_lower
+        ):
+
+            st.write(
+                "🛡️ Keep the growing area clean."
+            )
+
+            st.write(
+                "🌱 Use healthy planting materials."
+            )
+
+            st.write(
+                "🔍 Inspect plants regularly."
+            )
+
+            st.write(
+                "🌬️ Maintain good spacing."
+            )
+
+            st.write(
+                "💧 Avoid unnecessary moisture on leaves."
+            )
+
+
+        elif (
+            "spread" in question_lower
+            or "spreading" in question_lower
+        ):
+
+            st.write(
+                "Some plant diseases can spread through "
+                "water, insects, contaminated tools, "
+                "infected plant material or environmental "
+                "conditions."
+            )
+
+            st.write(
+                "Inspect nearby plants and monitor them "
+                "regularly."
+            )
+
+
+        elif (
+            "healthy" in question_lower
+        ):
+
+            st.write(
+                "🌿 Continue monitoring the plant regularly."
+            )
+
+            st.write(
+                "💧 Provide appropriate water."
+            )
+
+            st.write(
+                "🌱 Provide appropriate nutrients."
+            )
+
+            st.write(
+                "🔍 Check regularly for new symptoms."
+            )
+
+
+        else:
+
+            current_prediction = (
+                st.session_state.last_prediction
+            )
+
+            if current_prediction:
+
+                st.write(
+                    f"Based on the latest scan, "
+                    f"the AI predicted: "
+                    f"**{current_prediction}**."
+                )
+
+            st.write(
+                "Inspect the plant carefully, monitor "
+                "nearby plants and consult an agricultural "
+                "expert if symptoms continue."
+            )
+
+            st.info(
+                "💡 Try asking: "
+                "'What is this disease?', "
+                "'How can I prevent it?', "
+                "'Can it spread?', or "
+                "'How should I manage it?'"
+            )
+
+
+# =========================================================
 # ANALYSIS HISTORY
 # =========================================================
 
 st.divider()
 
 st.subheader(
-    history_title
+    "📜 Analysis History"
 )
 
 
@@ -1005,13 +1068,82 @@ else:
 
 
 # =========================================================
-# ABOUT
+# DOWNLOAD REPORT
+# =========================================================
+
+if st.session_state.last_prediction:
+
+    st.divider()
+
+    st.subheader(
+        "📄 Download Analysis Report"
+    )
+
+    report = f"""
+SMART PLANT DISEASE DETECTOR
+========================================
+
+PLANT SELECTED
+{plant}
+
+AI PREDICTION
+{st.session_state.last_prediction}
+
+CONFIDENCE
+{st.session_state.last_confidence * 100:.2f}%
+
+ANALYSIS DATE
+{datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
+
+
+GENERAL RECOMMENDATIONS
+========================================
+
+1. Inspect the plant and nearby plants.
+
+2. Keep the growing area clean.
+
+3. Monitor the plant regularly.
+
+4. Improve air circulation.
+
+5. Avoid unnecessary wetting of leaves.
+
+6. Consult an agricultural expert for confirmation.
+
+
+IMPORTANT NOTICE
+========================================
+
+This AI system provides a supporting prediction.
+It does not replace professional agricultural diagnosis.
+
+Confirm important disease diagnoses with a qualified
+agricultural professional.
+
+
+SMART PLANT DISEASE DETECTOR
+AI FOR SMART AGRICULTURE
+========================================
+"""
+
+    st.download_button(
+        label="📄 Download Analysis Report",
+        data=report,
+        file_name="plant_disease_report.txt",
+        mime="text/plain",
+        use_container_width=True
+    )
+
+
+# =========================================================
+# ABOUT THE PROJECT
 # =========================================================
 
 st.divider()
 
 st.subheader(
-    about
+    "📖 About the Project"
 )
 
 st.write(
@@ -1023,7 +1155,13 @@ st.write(
 st.write(
     "The system analyzes plant leaf images and "
     "provides possible disease predictions, "
-    "confidence scores and general management advice."
+    "confidence scores and general recommendations."
+)
+
+st.write(
+    "The project aims to help farmers and students "
+    "understand plant health and encourage early "
+    "identification of possible plant diseases."
 )
 
 st.warning(
