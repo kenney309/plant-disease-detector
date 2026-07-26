@@ -1,6 +1,5 @@
 streamlit
-tensorflow
-keras
+tensorflow-cpu
 pillow
 numpy
 huggingface_hub
