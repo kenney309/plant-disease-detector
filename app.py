@@ -25,21 +25,21 @@ st.set_page_config(
 st.title("🌿 Smart Plant Disease Detector")
 
 st.write(
-    "Upload a clear plant leaf image. "
-    "The AI will analyze the image and provide "
-    "a possible disease prediction."
+    "Upload a clear image of a plant leaf. "
+    "The AI will analyze the image and provide a "
+    "possible plant health prediction."
 )
 
 st.info(
-    "💡 For best results, use a clear, close-up photo "
-    "of one leaf with good lighting."
+    "📸 For the best result, photograph one leaf clearly "
+    "in good lighting. Avoid blurry images and busy backgrounds."
 )
 
 st.divider()
 
 
 # =========================================================
-# MODEL
+# MODEL SETTINGS
 # =========================================================
 
 MODEL_URL = (
@@ -52,8 +52,7 @@ MODEL_PATH = "plant_disease_model.tflite"
 
 
 # =========================================================
-# OFFICIAL MODEL CLASS MAPPING
-# This order matches the model's class_indices.json
+# MODEL CLASS NAMES
 # =========================================================
 
 CLASS_NAMES = [
@@ -112,35 +111,12 @@ CLASS_NAMES = [
 
 
 # =========================================================
-# PLANTS SUPPORTED BY THE MODEL
-# =========================================================
-
-SUPPORTED_PLANTS = [
-    "Apple",
-    "Blueberry",
-    "Cherry",
-    "Corn",
-    "Grape",
-    "Orange",
-    "Peach",
-    "Pepper",
-    "Potato",
-    "Raspberry",
-    "Soybean",
-    "Squash",
-    "Strawberry",
-    "Tomato"
-]
-
-
-# =========================================================
-# LOAD MODEL
+# DOWNLOAD AND LOAD MODEL
 # =========================================================
 
 @st.cache_resource
 def load_model():
 
-    # Download model if it does not exist
     if not os.path.exists(MODEL_PATH):
 
         with st.spinner(
@@ -163,7 +139,6 @@ def load_model():
                     response.content
                 )
 
-    # Load TFLite model
     interpreter = tf.lite.Interpreter(
         model_path=MODEL_PATH
     )
@@ -186,7 +161,7 @@ def load_model():
 
 
 # =========================================================
-# PREDICTION FUNCTION
+# AI PREDICTION
 # =========================================================
 
 def predict_leaf(image):
@@ -198,62 +173,52 @@ def predict_leaf(image):
     ) = load_model()
 
 
-    # -----------------------------------------------------
-    # MODEL EXPECTS 384 x 384
-    # -----------------------------------------------------
+    # Get the model's actual input dimensions
+    input_shape = input_details[0]["shape"]
 
+    height = int(input_shape[1])
+
+    width = int(input_shape[2])
+
+
+    # Resize image
     image = image.resize(
-        (384, 384)
+        (width, height)
     )
 
 
-    # -----------------------------------------------------
-    # CONVERT TO FLOAT32
-    # -----------------------------------------------------
-
+    # Convert image to NumPy array
     image_array = np.array(
         image,
         dtype=np.float32
     )
 
 
-    # -----------------------------------------------------
-    # IMPORTANT
-    # The model card's TFLite example uses raw float32
-    # pixel values, not /255 normalization.
-    # -----------------------------------------------------
-
+    # Add batch dimension
     image_array = np.expand_dims(
         image_array,
         axis=0
     )
 
 
-    # -----------------------------------------------------
-    # RUN MODEL
-    # -----------------------------------------------------
-
+    # Send image to model
     interpreter.set_tensor(
         input_details[0]["index"],
         image_array
     )
 
+
+    # Run model
     interpreter.invoke()
 
 
-    # -----------------------------------------------------
-    # GET OUTPUT
-    # -----------------------------------------------------
-
+    # Get output
     predictions = interpreter.get_tensor(
         output_details[0]["index"]
     )[0]
 
 
-    # -----------------------------------------------------
-    # TOP 5 RESULTS
-    # -----------------------------------------------------
-
+    # Get top 5 predictions
     top_indices = np.argsort(
         predictions
     )[::-1][:5]
@@ -261,32 +226,248 @@ def predict_leaf(image):
 
     results = []
 
+
     for index in top_indices:
 
         if index < len(CLASS_NAMES):
 
             results.append(
                 {
-                    "class": CLASS_NAMES[index],
+                    "name": CLASS_NAMES[index],
                     "confidence": float(
                         predictions[index]
                     )
                 }
             )
 
+
     return results
 
 
 # =========================================================
-# SELECT IMAGE
+# CLEAR ADVICE FUNCTION
+# =========================================================
+
+def get_advice(prediction, confidence):
+
+    # Low confidence
+    if confidence < 0.40:
+
+        return """
+⚠️ THE AI IS NOT CONFIDENT ENOUGH
+
+The prediction is uncertain and should not be treated
+as a confirmed diagnosis.
+
+What you should do:
+
+• Take another clear close-up photograph.
+• Use good natural lighting.
+• Make sure the leaf is not blurry.
+• Photograph one leaf at a time.
+• Make sure the affected area is visible.
+• Try photographing both sides of the leaf.
+• Consult an agricultural expert for confirmation.
+
+Do not apply pesticides or chemicals based only on
+this low-confidence AI prediction.
+"""
+
+
+    # Healthy
+    if "Healthy" in prediction:
+
+        return """
+🌿 THE LEAF APPEARS HEALTHY
+
+The AI predicts that the leaf may be healthy.
+
+What you should do:
+
+• Continue regular plant care.
+• Monitor the plant regularly.
+• Provide appropriate water and nutrients.
+• Keep the growing area clean.
+• Remove dead or damaged plant material.
+• Check regularly for new symptoms.
+
+If you notice unusual spots, discoloration, or other
+symptoms, take another clear image for analysis.
+"""
+
+
+    # Apple Scab
+    if "Apple - Apple Scab" in prediction:
+
+        return """
+🍎 POSSIBLE APPLE SCAB
+
+The AI has detected a possible Apple Scab condition.
+
+What you should do:
+
+• Inspect other leaves and nearby apple trees.
+• Remove severely affected plant material where appropriate.
+• Keep fallen leaves and infected material away from the plant.
+• Improve air circulation around the tree.
+• Avoid unnecessary wetting of leaves.
+• Monitor new leaves for additional symptoms.
+• Consult an agricultural expert for confirmation.
+
+Confirm the diagnosis before applying any chemical treatment.
+"""
+
+
+    # Apple Black Rot
+    if "Apple - Black Rot" in prediction:
+
+        return """
+🍎 POSSIBLE APPLE BLACK ROT
+
+The AI has detected a possible Black Rot condition.
+
+What you should do:
+
+• Inspect the tree and nearby plants carefully.
+• Remove severely affected material where appropriate.
+• Keep the growing area clean.
+• Remove fallen infected plant material.
+• Monitor nearby plants for similar symptoms.
+• Seek professional agricultural advice for confirmation.
+
+Do not apply chemical treatment based only on an AI prediction.
+"""
+
+
+    # Tomato Late Blight
+    if "Tomato - Late Blight" in prediction:
+
+        return """
+🍅 POSSIBLE TOMATO LATE BLIGHT
+
+The AI has detected a possible Late Blight condition.
+
+What you should do:
+
+• Inspect other tomato and potato plants nearby.
+• Monitor the crop closely for spreading symptoms.
+• Improve air circulation around plants.
+• Avoid unnecessary wetting of leaves.
+• Remove severely affected material where appropriate.
+• Seek agricultural advice promptly for confirmation.
+
+Late Blight can spread quickly, so professional confirmation
+is recommended.
+"""
+
+
+    # Tomato Early Blight
+    if "Tomato - Early Blight" in prediction:
+
+        return """
+🍅 POSSIBLE TOMATO EARLY BLIGHT
+
+The AI has detected a possible Early Blight condition.
+
+What you should do:
+
+• Inspect other tomato plants.
+• Monitor whether symptoms are spreading.
+• Remove severely affected leaves where appropriate.
+• Keep the area around the plants clean.
+• Improve air circulation.
+• Consult an agricultural expert for confirmation.
+"""
+
+
+    # Grape diseases
+    if "Grape -" in prediction:
+
+        return """
+🍇 POSSIBLE GRAPE LEAF CONDITION
+
+The AI has detected a possible grape leaf condition.
+
+What you should do:
+
+• Inspect other grape plants.
+• Monitor the crop for spreading symptoms.
+• Remove severely affected plant material where appropriate.
+• Keep the growing area clean.
+• Improve air circulation.
+• Consult an agricultural professional for confirmation.
+"""
+
+
+    # Corn diseases
+    if "Corn -" in prediction:
+
+        return """
+🌽 POSSIBLE CORN LEAF CONDITION
+
+The AI has detected a possible corn leaf condition.
+
+What you should do:
+
+• Inspect other plants in the field.
+• Monitor whether symptoms are spreading.
+• Keep the field clean.
+• Check nearby plants for similar symptoms.
+• Seek advice from an agricultural extension officer
+  or qualified agricultural professional.
+"""
+
+
+    # Potato diseases
+    if "Potato -" in prediction:
+
+        return """
+🥔 POSSIBLE POTATO LEAF CONDITION
+
+The AI has detected a possible potato leaf condition.
+
+What you should do:
+
+• Inspect nearby potato plants.
+• Monitor the crop for spreading symptoms.
+• Maintain good field hygiene.
+• Remove severely affected material where appropriate.
+• Consult an agricultural professional for confirmation.
+"""
+
+
+    # General disease
+    return f"""
+🌱 POSSIBLE PLANT CONDITION
+
+AI Prediction:
+{prediction}
+
+What you should do:
+
+• Inspect the plant carefully.
+• Check nearby plants for similar symptoms.
+• Monitor whether the condition is spreading.
+• Keep the growing area clean.
+• Take another clear photo if necessary.
+• Consult an agricultural expert for confirmation.
+
+IMPORTANT:
+The AI prediction is a supporting tool and should not
+replace professional agricultural diagnosis.
+"""
+
+
+# =========================================================
+# IMAGE INPUT
 # =========================================================
 
 st.subheader(
-    "📷 Upload Your Leaf"
+    "📷 Choose Your Leaf Image"
 )
 
 input_method = st.radio(
-    "Choose how to provide the image:",
+    "Select an option:",
     [
         "Upload Image",
         "Use Camera"
@@ -301,7 +482,7 @@ uploaded_file = None
 if input_method == "Upload Image":
 
     uploaded_file = st.file_uploader(
-        "Choose a clear leaf image",
+        "Upload a clear plant leaf image",
         type=[
             "jpg",
             "jpeg",
@@ -312,12 +493,12 @@ if input_method == "Upload Image":
 else:
 
     uploaded_file = st.camera_input(
-        "Take a picture of the leaf"
+        "Take a clear picture of the leaf"
     )
 
 
 # =========================================================
-# ANALYSIS
+# ANALYZE IMAGE
 # =========================================================
 
 if uploaded_file is not None:
@@ -327,10 +508,9 @@ if uploaded_file is not None:
     ).convert("RGB")
 
 
-    # Show image
     st.image(
         image,
-        caption="Leaf Image",
+        caption="Plant Leaf Image",
         use_container_width=True
     )
 
@@ -354,14 +534,11 @@ if uploaded_file is not None:
                 )
 
 
-            # -------------------------------------------------
-            # BEST RESULT
-            # -------------------------------------------------
-
+            # Best result
             best_result = results[0]
 
             prediction = (
-                best_result["class"]
+                best_result["name"]
             )
 
             confidence = (
@@ -376,19 +553,17 @@ if uploaded_file is not None:
             )
 
 
-            # -------------------------------------------------
-            # DISPLAY RESULT
-            # -------------------------------------------------
+            # =================================================
+            # AI PREDICTION
+            # =================================================
 
             st.success(
-                "✅ Analysis Complete"
+                "✅ Analysis Complete!"
             )
-
 
             st.subheader(
                 "🌿 AI Prediction"
             )
-
 
             st.write(
                 f"**Prediction:** {prediction}"
@@ -417,57 +592,39 @@ if uploaded_file is not None:
 
 
             # =================================================
-            # CONFIDENCE HANDLING
+            # CONFIDENCE STATUS
             # =================================================
 
             if confidence < 0.40:
 
                 st.error(
-                    """
-                    ⚠️ LOW CONFIDENCE
-
-                    The AI is not confident enough to
-                    give a reliable disease diagnosis.
-
-                    The result shown above should NOT be
-                    treated as a confirmed diagnosis.
-
-                    Please take a clearer close-up image
-                    with good lighting.
-                    """
+                    "⚠️ LOW CONFIDENCE — "
+                    "The AI is uncertain about this result."
                 )
-
 
             elif confidence < 0.70:
 
                 st.warning(
-                    """
-                    ⚠️ MODERATE CONFIDENCE
-
-                    The AI has some uncertainty.
-
-                    Consider taking another image or
-                    consulting an agricultural expert.
-                    """
+                    "⚠️ MODERATE CONFIDENCE — "
+                    "Consider confirming the result."
                 )
-
 
             else:
 
                 st.success(
-                    "✅ The AI has higher confidence "
-                    "in this prediction."
+                    "✅ HIGHER CONFIDENCE — "
+                    "The AI has stronger confidence in this result."
                 )
 
 
             # =================================================
-            # TOP 5 RESULTS
+            # TOP 5 PREDICTIONS
             # =================================================
 
             st.divider()
 
             st.subheader(
-                "🔎 Top AI Predictions"
+                "🔎 Top 5 AI Predictions"
             )
 
 
@@ -478,72 +635,31 @@ if uploaded_file is not None:
 
                 st.write(
                     f"**{number}. "
-                    f"{result['class']}** — "
+                    f"{result['name']}** — "
                     f"{result['confidence'] * 100:.2f}%"
                 )
 
 
             # =================================================
-            # RECOMMENDATION
+            # CLEAR ADVICE
             # =================================================
 
             st.divider()
 
             st.subheader(
-                "💡 Recommendation"
+                "💡 Clear Advice"
             )
 
 
-            if confidence < 0.40:
-
-                st.info(
-                    """
-                    🌱 The AI cannot confidently identify
-                    the condition in this image.
-
-                    Recommended actions:
-
-                    • Take another clear photograph.
-                    • Use natural daylight.
-                    • Photograph one leaf at a time.
-                    • Make sure the leaf fills much of
-                      the image.
-                    • Avoid blurry images.
-                    • Consult an agricultural expert
-                      for confirmation.
-                    """
-                )
+            advice = get_advice(
+                prediction,
+                confidence
+            )
 
 
-            elif "Healthy" in prediction:
-
-                st.success(
-                    """
-                    🌿 The AI predicts that the leaf
-                    may be healthy.
-
-                    Continue monitoring the plant and
-                    maintain good agricultural practices.
-                    """
-                )
-
-
-            else:
-
-                st.warning(
-                    f"""
-                    🌱 Possible condition:
-
-                    {prediction}
-
-                    This is an AI prediction, not a
-                    confirmed diagnosis.
-
-                    Monitor the plant and seek advice
-                    from an agricultural professional
-                    before taking treatment actions.
-                    """
-                )
+            st.info(
+                advice
+            )
 
 
             # =================================================
@@ -553,30 +669,29 @@ if uploaded_file is not None:
             st.divider()
 
             st.subheader(
-                "📄 Analysis Report"
+                "📄 Download Analysis Report"
             )
 
 
             report = f"""
 SMART PLANT DISEASE DETECTOR
-================================
+========================================
+
+ANALYSIS TIME
+----------------------------------------
+{analysis_time}
+
 
 AI PREDICTION
---------------------------------
-
-Prediction:
-{prediction}
+----------------------------------------
+Prediction: {prediction}
 
 Confidence:
 {confidence * 100:.2f}%
 
-Analysis Time:
-{analysis_time}
-
 
 TOP 5 PREDICTIONS
---------------------------------
-
+----------------------------------------
 """
 
 
@@ -587,37 +702,44 @@ TOP 5 PREDICTIONS
 
                 report += (
                     f"{number}. "
-                    f"{result['class']} - "
+                    f"{result['name']} - "
                     f"{result['confidence'] * 100:.2f}%\n"
                 )
 
 
-            report += """
+            report += f"""
+
+CLEAR ADVICE
+----------------------------------------
+{advice}
+
 
 IMPORTANT NOTICE
---------------------------------
+----------------------------------------
 
-This AI system provides a supporting prediction.
-It does not replace professional agricultural
+This AI system provides a supporting prediction
+and does not replace professional agricultural
 diagnosis.
 
-The model was trained using PlantVillage images
-and may perform differently on real-world field
-photographs.
+The model may perform differently on real-world
+field photographs because lighting, background,
+leaf position, and image quality can affect results.
 
-For important crop management decisions,
-consult a qualified agricultural professional.
+For important crop management decisions, consult
+a qualified agricultural professional.
+
 
 SMART PLANT DISEASE DETECTOR
 AI FOR SMART AGRICULTURE
+========================================
 """
 
 
             st.download_button(
-                "📥 Download Report",
-                report,
+                label="📥 Download Analysis Report",
+                data=report,
                 file_name=(
-                    "plant_disease_report.txt"
+                    "plant_disease_analysis_report.txt"
                 ),
                 mime="text/plain",
                 use_container_width=True
@@ -627,7 +749,8 @@ AI FOR SMART AGRICULTURE
         except Exception as error:
 
             st.error(
-                "❌ An error occurred during analysis."
+                "❌ An error occurred while analyzing "
+                "the image."
             )
 
             st.write(
@@ -638,13 +761,13 @@ AI FOR SMART AGRICULTURE
 else:
 
     st.info(
-        "📷 Upload or capture a leaf image "
-        "to begin."
+        "📷 Upload or capture a clear plant leaf image "
+        "to begin analysis."
     )
 
 
 # =========================================================
-# ABOUT
+# ABOUT PROJECT
 # =========================================================
 
 st.divider()
@@ -659,9 +782,9 @@ st.write(
     Artificial Intelligence project designed
     to support smart agriculture.
 
-    It analyzes plant leaf images and provides
-    possible disease classifications and confidence
-    scores.
+    The system analyzes images of plant leaves
+    and provides possible disease predictions,
+    confidence scores and clear general advice.
 
     The system is intended as a supporting tool
     and should not replace professional agricultural
@@ -669,6 +792,12 @@ st.write(
     """
 )
 
+
+# =========================================================
+# FOOTER
+# =========================================================
+
+st.divider()
 
 st.caption(
     "🌿 Smart Plant Disease Detector | "
