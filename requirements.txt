@@ -1,5 +1,4 @@
 streamlit
-tensorflow-cpu
 pillow
 numpy
-huggingface_hub
+tensorflow==2.18.0
