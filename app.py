@@ -5,29 +5,23 @@ import tensorflow as tf
 import requests
 import os
 
-# ============================================
-# PAGE SETTINGS
-# ============================================
-
 st.set_page_config(
     page_title="Plant Disease Detector",
-    page_icon="🌿",
-    layout="centered"
+    page_icon="🌿"
 )
 
 st.title("🌿 Plant Disease Detector")
 
 st.write(
-    "Upload a clear image of a plant leaf and the AI "
-    "will analyze it for possible plant diseases."
+    "Select the plant type, upload a leaf image, "
+    "and let the AI analyze it."
 )
 
 st.divider()
 
-
-# ============================================
-# MODEL SETTINGS
-# ============================================
+# ==============================
+# MODEL
+# ==============================
 
 MODEL_URL = (
     "https://huggingface.co/animeshakr/"
@@ -36,11 +30,6 @@ MODEL_URL = (
 )
 
 MODEL_PATH = "plant_disease_model.tflite"
-
-
-# ============================================
-# CLASS NAMES
-# ============================================
 
 CLASS_NAMES = [
     "Apple - Apple Scab",
@@ -83,155 +72,131 @@ CLASS_NAMES = [
     "Tomato - Healthy"
 ]
 
-
-# ============================================
+# ==============================
 # DOWNLOAD MODEL
-# ============================================
-
-@st.cache_resource
-def download_model():
-
-    if not os.path.exists(MODEL_PATH):
-
-        with st.spinner(
-            "Downloading AI model for the first time..."
-        ):
-
-            response = requests.get(
-                MODEL_URL,
-                stream=True,
-                timeout=300
-            )
-
-            response.raise_for_status()
-
-            with open(
-                MODEL_PATH,
-                "wb"
-            ) as file:
-
-                for chunk in response.iter_content(
-                    chunk_size=1024 * 1024
-                ):
-
-                    if chunk:
-                        file.write(chunk)
-
-    return MODEL_PATH
-
-
-# ============================================
-# LOAD MODEL
-# ============================================
+# ==============================
 
 @st.cache_resource
 def load_model():
 
-    model_path = download_model()
+    if not os.path.exists(MODEL_PATH):
+
+        response = requests.get(
+            MODEL_URL,
+            timeout=300
+        )
+
+        response.raise_for_status()
+
+        with open(
+            MODEL_PATH,
+            "wb"
+        ) as f:
+
+            f.write(response.content)
 
     interpreter = tf.lite.Interpreter(
-        model_path=model_path
+        model_path=MODEL_PATH
     )
 
     interpreter.allocate_tensors()
 
-    input_details = interpreter.get_input_details()
-
-    output_details = interpreter.get_output_details()
-
     return (
         interpreter,
-        input_details,
-        output_details
+        interpreter.get_input_details(),
+        interpreter.get_output_details()
     )
 
 
-# ============================================
-# PREDICT IMAGE
-# ============================================
+# ==============================
+# PREDICTION
+# ==============================
 
-def predict_image(image):
+def predict(image):
 
-    interpreter, input_details, output_details = load_model()
+    interpreter, inputs, outputs = load_model()
 
-    input_shape = input_details[0]["shape"]
+    shape = inputs[0]["shape"]
 
-    height = input_shape[1]
-    width = input_shape[2]
-
-    # Resize image
     image = image.resize(
-        (width, height)
+        (shape[2], shape[1])
     )
 
-    # Convert to RGB
     image_array = np.array(
         image,
         dtype=np.float32
     )
 
-    # Normalize image
     image_array = image_array / 255.0
 
-    # Add batch dimension
     image_array = np.expand_dims(
         image_array,
         axis=0
     )
 
-    # Run AI
     interpreter.set_tensor(
-        input_details[0]["index"],
+        inputs[0]["index"],
         image_array
     )
 
     interpreter.invoke()
 
     output = interpreter.get_tensor(
-        output_details[0]["index"]
+        outputs[0]["index"]
+    )[0]
+
+    index = int(
+        np.argmax(output)
     )
 
-    predictions = output[0]
+    confidence = float(
+        output[index]
+    )
 
-    # Get top 3 predictions
-    top_indices = np.argsort(
-        predictions
-    )[::-1][:3]
-
-    results = []
-
-    for index in top_indices:
-
-        if index < len(CLASS_NAMES):
-
-            class_name = CLASS_NAMES[index]
-
-        else:
-
-            class_name = (
-                f"Unknown class {index}"
-            )
-
-        confidence = float(
-            predictions[index]
-        )
-
-        results.append(
-            (
-                class_name,
-                confidence
-            )
-        )
-
-    return results
+    return (
+        CLASS_NAMES[index],
+        confidence
+    )
 
 
-# ============================================
+# ==============================
+# PLANT SELECTION
+# ==============================
+
+plant = st.selectbox(
+    "🌱 Select the plant you are testing:",
+    [
+        "Apple",
+        "Banana",
+        "Grape",
+        "Guava",
+        "Mango",
+        "Tomato",
+        "Other"
+    ]
+)
+
+if plant == "Guava":
+
+    st.info(
+        "🍈 Guava is not included in the current AI model. "
+        "The AI result may therefore be inaccurate."
+    )
+
+elif plant == "Mango":
+
+    st.info(
+        "🥭 Mango is not included in the current AI model. "
+        "The AI result may therefore be inaccurate."
+    )
+
+
+# ==============================
 # UPLOAD IMAGE
-# ============================================
+# ==============================
 
 uploaded_file = st.file_uploader(
-    "📷 Upload a plant leaf image",
+    "📷 Upload the leaf image",
     type=[
         "jpg",
         "jpeg",
@@ -240,11 +205,7 @@ uploaded_file = st.file_uploader(
 )
 
 
-# ============================================
-# ANALYZE IMAGE
-# ============================================
-
-if uploaded_file is not None:
+if uploaded_file:
 
     image = Image.open(
         uploaded_file
@@ -252,7 +213,7 @@ if uploaded_file is not None:
 
     st.image(
         image,
-        caption="Uploaded Plant Leaf",
+        caption=f"{plant} Leaf",
         use_container_width=True
     )
 
@@ -260,134 +221,69 @@ if uploaded_file is not None:
         "🔍 ANALYZE LEAF"
     ):
 
-        try:
+        with st.spinner(
+            "🤖 AI is analyzing..."
+        ):
 
-            with st.spinner(
-                "🤖 AI is analyzing the leaf..."
-            ):
+            prediction, confidence = predict(
+                image
+            )
 
-                results = predict_image(
-                    image
-                )
+        st.subheader(
+            "🌿 AI Result"
+        )
 
-            # Best prediction
-            best_prediction = results[0]
+        st.write(
+            f"**Selected Plant:** {plant}"
+        )
 
-            disease = best_prediction[0]
+        st.write(
+            f"**AI Prediction:** {prediction}"
+        )
 
-            confidence = best_prediction[1]
+        st.write(
+            f"**Confidence:** "
+            f"{confidence * 100:.2f}%"
+        )
+
+        st.progress(
+            min(
+                max(
+                    confidence,
+                    0.0
+                ),
+                1.0
+            )
+        )
+
+        if confidence < 0.40:
+
+            st.warning(
+                "⚠️ The AI has low confidence. "
+                "The result may not be reliable."
+            )
+
+        if plant in ["Guava", "Mango"]:
+
+            st.error(
+                f"⚠️ The current AI model was not trained "
+                f"specifically on {plant} leaves. "
+                f"This result should not be considered "
+                f"a reliable {plant} disease diagnosis."
+            )
+
+        else:
 
             st.success(
                 "Analysis complete!"
             )
 
-            st.subheader(
-                "🌿 AI Analysis"
-            )
-
-            # ====================================
-            # LOW CONFIDENCE WARNING
-            # ====================================
-
-            if confidence < 0.40:
-
-                st.warning(
-                    "⚠️ LOW CONFIDENCE: "
-                    "The AI is not confident about this result. "
-                    "The plant may not be supported by the current "
-                    "AI model, or the image may be unclear."
-                )
-
-            else:
-
-                st.success(
-                    "The AI has a higher confidence "
-                    "in this prediction."
-                )
-
-
-            # ====================================
-            # MAIN PREDICTION
-            # ====================================
-
-            st.write(
-                f"### Prediction: {disease}"
-            )
-
-            st.write(
-                f"**Confidence: "
-                f"{confidence * 100:.2f}%**"
-            )
-
-            st.progress(
-                min(
-                    max(
-                        confidence,
-                        0.0
-                    ),
-                    1.0
-                )
-            )
-
-
-            # ====================================
-            # TOP 3 PREDICTIONS
-            # ====================================
-
-            st.subheader(
-                "🔎 Top 3 AI Predictions"
-            )
-
-            for i, (
-                class_name,
-                score
-            ) in enumerate(
-                results,
-                start=1
-            ):
-
-                st.write(
-                    f"**{i}. {class_name}** — "
-                    f"{score * 100:.2f}%"
-                )
-
-
-            # ====================================
-            # IMPORTANT INFORMATION
-            # ====================================
-
-            st.info(
-                "💡 Important: This AI model was trained "
-                "on a specific set of plant and disease "
-                "categories. If your plant is not one of "
-                "the supported categories, the AI may "
-                "incorrectly choose another plant."
-            )
-
-
-        except Exception as e:
-
-            st.error(
-                "❌ An error occurred while analyzing "
-                "the image."
-            )
-
-            st.write(
-                str(e)
-            )
-
-
 else:
 
     st.info(
-        "📷 Upload a clear plant leaf image "
-        "to begin."
+        "Upload a clear leaf image to begin."
     )
 
-
-# ============================================
-# ABOUT PROJECT
-# ============================================
 
 st.divider()
 
@@ -397,17 +293,12 @@ st.subheader(
 
 st.write(
     """
-    The Plant Disease Detector is an Artificial Intelligence
-    project designed to support smart agriculture.
+    The Plant Disease Detector is an AI-based smart
+    agriculture project that analyzes plant leaf images
+    and predicts possible diseases.
 
-    The system analyzes images of plant leaves and predicts
-    possible plant disease categories.
-
-    The system also provides a confidence score and warns
-    users when the AI is not confident about its prediction.
+    Users should always consider the confidence score
+    and verify uncertain results with an agricultural
+    expert.
     """
-)
-
-st.caption(
-    "🌿 Plant Disease Detector | AI for Smart Agriculture"
 )
