@@ -1,6 +1,9 @@
 import streamlit as st
 from PIL import Image
+import numpy as np
+import tensorflow as tf
 import requests
+import os
 
 st.set_page_config(
     page_title="Plant Disease Detector",
@@ -11,12 +14,101 @@ st.set_page_config(
 st.title("🌿 Plant Disease Detector")
 
 st.write(
-    "Upload a clear image of a plant leaf to identify "
-    "possible plant diseases using Artificial Intelligence."
+    "Upload a clear image of a plant leaf. "
+    "Our AI model will analyze it and predict "
+    "a possible plant disease."
 )
 
-st.divider()
+# 38 PlantVillage classes
+CLASS_NAMES = [
+    "Apple - Apple Scab",
+    "Apple - Black Rot",
+    "Apple - Cedar Apple Rust",
+    "Apple - Healthy",
+    "Blueberry - Healthy",
+    "Cherry - Powdery Mildew",
+    "Cherry - Healthy",
+    "Corn - Cercospora Leaf Spot / Gray Leaf Spot",
+    "Corn - Common Rust",
+    "Corn - Northern Leaf Blight",
+    "Corn - Healthy",
+    "Grape - Black Rot",
+    "Grape - Esca (Black Measles)",
+    "Grape - Leaf Blight",
+    "Grape - Healthy",
+    "Orange - Huanglongbing (Citrus Greening)",
+    "Peach - Bacterial Spot",
+    "Peach - Healthy",
+    "Pepper - Bacterial Spot",
+    "Pepper - Healthy",
+    "Potato - Early Blight",
+    "Potato - Late Blight",
+    "Potato - Healthy",
+    "Raspberry - Healthy",
+    "Soybean - Healthy",
+    "Squash - Powdery Mildew",
+    "Strawberry - Leaf Scorch",
+    "Strawberry - Healthy",
+    "Tomato - Bacterial Spot",
+    "Tomato - Early Blight",
+    "Tomato - Late Blight",
+    "Tomato - Leaf Mold",
+    "Tomato - Septoria Leaf Spot",
+    "Tomato - Spider Mites",
+    "Tomato - Target Spot",
+    "Tomato - Yellow Leaf Curl Virus",
+    "Tomato - Mosaic Virus",
+    "Tomato - Healthy"
+]
 
+# Disease advice
+def get_advice(disease):
+
+    if "Healthy" in disease:
+        return (
+            "The plant appears healthy. Continue proper watering, "
+            "adequate sunlight, good nutrition, and regular monitoring."
+        )
+
+    if "Early Blight" in disease:
+        return (
+            "Remove affected leaves and maintain good garden hygiene. "
+            "Avoid watering the leaves directly."
+        )
+
+    if "Late Blight" in disease:
+        return (
+            "Remove severely affected plant material and avoid "
+            "overhead watering. Seek advice from a local agricultural expert."
+        )
+
+    if "Powdery Mildew" in disease:
+        return (
+            "Improve air circulation around the plant and remove "
+            "severely affected leaves."
+        )
+
+    if "Bacterial Spot" in disease:
+        return (
+            "Remove badly affected leaves and avoid working with plants "
+            "when they are wet. Consult an agricultural professional "
+            "for appropriate treatment."
+        )
+
+    if "Apple Scab" in disease:
+        return (
+            "Remove infected leaves and fruit where practical and "
+            "improve air circulation around the tree."
+        )
+
+    return (
+        "The image may show signs of plant disease. Remove severely "
+        "affected plant material where appropriate and consult a "
+        "qualified agricultural professional for specific treatment."
+    )
+
+
+# Upload image
 uploaded_file = st.file_uploader(
     "📷 Upload a plant leaf image",
     type=["jpg", "jpeg", "png"]
@@ -34,106 +126,33 @@ if uploaded_file is not None:
 
     if st.button("🔍 ANALYZE LEAF"):
 
-        with st.spinner("AI is analyzing the leaf..."):
+        st.info(
+            "The image has been received. "
+            "The AI model is ready for prediction."
+        )
 
-            try:
+        # Temporary prediction test
+        # The actual trained model will be connected here.
+        st.subheader("🌿 AI Analysis")
 
-                # Get Hugging Face token from Streamlit Secrets
-                hf_token = st.secrets["HF_TOKEN"]
+        st.success(
+            "Image successfully processed!"
+        )
 
-                # Hugging Face model endpoint
-                API_URL = (
-                    "https://api-inference.huggingface.co/models/"
-                    "animeshakr/plant-disease-efficientnetv2s"
-                )
+        st.write(
+            "The AI prediction engine is now ready "
+            "for the trained PlantVillage model."
+        )
 
-                headers = {
-                    "Authorization": f"Bearer {hf_token}"
-                }
-
-                # Convert image to bytes
-                image_bytes = uploaded_file.getvalue()
-
-                # Send image to model
-                response = requests.post(
-                    API_URL,
-                    headers=headers,
-                    data=image_bytes,
-                    timeout=60
-                )
-
-                if response.status_code == 200:
-
-                    results = response.json()
-
-                    st.success("Analysis complete!")
-
-                    st.subheader("🌿 AI Prediction")
-
-                    if isinstance(results, list):
-
-                        best_result = max(
-                            results,
-                            key=lambda x: x.get(
-                                "score", 0
-                            )
-                        )
-
-                        label = best_result.get(
-                            "label",
-                            "Unknown"
-                        )
-
-                        score = best_result.get(
-                            "score",
-                            0
-                        )
-
-                        st.write(
-                            f"**Prediction:** {label}"
-                        )
-
-                        st.write(
-                            f"**Confidence:** "
-                            f"{score * 100:.2f}%"
-                        )
-
-                        st.progress(
-                            min(float(score), 1.0)
-                        )
-
-                    else:
-
-                        st.write(results)
-
-                else:
-
-                    st.error(
-                        "The AI model could not process "
-                        "the image."
-                    )
-
-                    st.write(
-                        f"Server response: "
-                        f"{response.status_code}"
-                    )
-
-                    st.write(response.text)
-
-            except Exception as e:
-
-                st.error(
-                    "An error occurred while analyzing "
-                    "the image."
-                )
-
-                st.write(str(e))
+        st.info(
+            "Next step: connect the trained 38-class "
+            "PlantVillage model for actual disease predictions."
+        )
 
 else:
 
     st.info(
-        "👆 Upload a clear plant leaf image "
-        "to begin."
+        "👆 Upload a clear image of a plant leaf to begin."
     )
 
 st.divider()
@@ -145,8 +164,9 @@ st.write(
     The Plant Disease Detector is an Artificial Intelligence
     project designed to support smart agriculture.
 
-    The system analyzes images of plant leaves and predicts
-    possible plant disease categories.
+    The system analyzes images of plant leaves and is designed
+    to identify possible plant diseases and provide useful
+    information about plant health.
     """
 )
 
