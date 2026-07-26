@@ -19,21 +19,202 @@ st.set_page_config(
 
 
 # =========================================================
+# LANGUAGE SELECTION
+# =========================================================
+
+language = st.selectbox(
+    "🌐 Choose Language / Londa Olulimi",
+    [
+        "English",
+        "Luganda"
+    ]
+)
+
+
+# =========================================================
+# TRANSLATIONS
+# =========================================================
+
+if language == "English":
+
+    title = "🌿 Smart Plant Disease Detector"
+
+    description = (
+        "Upload or capture a clear image of a plant leaf. "
+        "The AI will analyze the image and provide a possible "
+        "plant disease prediction, confidence score and advice."
+    )
+
+    image_instruction = (
+        "📸 For best results, use a clear close-up image "
+        "of one leaf with good lighting."
+    )
+
+    choose_image = "📷 Choose Your Leaf Image"
+
+    upload_image = "Upload Image"
+
+    use_camera = "Use Camera"
+
+    upload_instruction = "Upload a clear plant leaf image"
+
+    camera_instruction = "Take a clear picture of the leaf"
+
+    analyze = "🔍 ANALYZE LEAF"
+
+    prediction_title = "🌿 AI Prediction"
+
+    confidence = "Confidence"
+
+    analysis_time = "Analysis Time"
+
+    top_predictions = "🔎 Top 5 AI Predictions"
+
+    clear_advice = "💡 Clear Advice"
+
+    download_report = "📄 Download Analysis Report"
+
+    analysis_complete = "✅ Analysis Complete!"
+
+    low_confidence = "⚠️ LOW CONFIDENCE"
+
+    moderate_confidence = "⚠️ MODERATE CONFIDENCE"
+
+    higher_confidence = "✅ HIGHER CONFIDENCE"
+
+    low_confidence_message = (
+        "The AI is uncertain about this result. "
+        "The prediction may be incorrect."
+    )
+
+    moderate_confidence_message = (
+        "The AI has some uncertainty about this result."
+    )
+
+    higher_confidence_message = (
+        "The AI has stronger confidence in this prediction."
+    )
+
+    about_title = "📖 About the Project"
+
+    about_text = (
+        "The Smart Plant Disease Detector is an Artificial "
+        "Intelligence project designed to support smart agriculture. "
+        "The system analyzes images of plant leaves and provides "
+        "possible disease predictions, confidence scores and "
+        "general recommendations."
+    )
+
+    important_notice = (
+        "⚠️ This AI system provides a supporting prediction. "
+        "It does not replace professional agricultural diagnosis."
+    )
+
+    no_image = (
+        "📷 Upload or capture a clear plant leaf image "
+        "to begin analysis."
+    )
+
+else:
+
+    title = "🌿 Pulogulaamu Eyekenneenya Obulwadde bw'Ebimera"
+
+    description = (
+        "Teekamu oba kwata ekifaananyi ekitegeerekeka obulungi "
+        "eky'ekikoola ky'ekimera. AI ejja kwekenneenya ekifaananyi "
+        "n'okuwa obulwadde obuyinza okubaawo, obwesige bw'obuvumbuzi "
+        "n'amagezi agayinza okukuyamba."
+    )
+
+    image_instruction = (
+        "📸 Okufuna ebivaamu ebirungi, kozesa ekifaananyi "
+        "ekitegeerekeka obulungi eky'ekikoola kimu nga waliwo "
+        "ekitangaala ekimala."
+    )
+
+    choose_image = "📷 Londa Ekifaananyi ky'Ekikoola"
+
+    upload_image = "Teekamu Ekifaananyi"
+
+    use_camera = "Kozesa Camera"
+
+    upload_instruction = (
+        "Teekamu ekifaananyi ekitegeerekeka obulungi "
+        "eky'ekikoola ky'ekimera"
+    )
+
+    camera_instruction = (
+        "Kwata ekifaananyi ekitegeerekeka obulungi "
+        "eky'ekikoola"
+    )
+
+    analyze = "🔍 KEENNEENYA EKIKOOLO"
+
+    prediction_title = "🌿 Obuvumbuzi bwa AI"
+
+    confidence = "Obwesige"
+
+    analysis_time = "Obudde Obw'okwekeneenya"
+
+    top_predictions = (
+        "🔎 Obuvumbuzi 5 Obusinga Okuba Waggulu"
+    )
+
+    clear_advice = "💡 Amagezi Amakulu"
+
+    download_report = "📄 Wanula Lipoota y'Okwekeneenya"
+
+    analysis_complete = "✅ Okwekeneenya Kuwedde!"
+
+    low_confidence = "⚠️ OBWESIGE BUKYALI BUTONO"
+
+    moderate_confidence = "⚠️ OBWESIGE BWA WAKATI"
+
+    higher_confidence = "✅ OBWESIGE BUKULU"
+
+    low_confidence_message = (
+        "AI tekwesiga nnyo bivudde mu kwekenneenya kuno. "
+        "Obuvumbuzi buyinza okuba nga si butuufu."
+    )
+
+    moderate_confidence_message = (
+        "AI erina obutali bukakafu obumu ku bivudde mu kwekenneenya kuno."
+    )
+
+    higher_confidence_message = (
+        "AI erina obwesige obusingako mu buvumbuzi buno."
+    )
+
+    about_title = "📖 Ebikwata ku Pulogulaamu"
+
+    about_text = (
+        "Pulogulaamu Eyekenneenya Obulwadde bw'Ebimera ye "
+        "pulojekiti ya Artificial Intelligence eyakolebwa okuyamba "
+        "mu by'obulimi. Enkola eno ekebera ebifaananyi by'ebikoola "
+        "by'ebimera n'okuwa obulwadde obuyinza okubaawo, obwesige "
+        "bw'obuvumbuzi n'amagezi agayinza okuyamba."
+    )
+
+    important_notice = (
+        "⚠️ Enkola eno ewa buvumbuzi bwa buyambi bwokka. "
+        "Teddira kifo kya kwekenneenya kwa mukugu mu by'obulimi."
+    )
+
+    no_image = (
+        "📷 Teekamu oba kwata ekifaananyi ekitegeerekeka "
+        "obulungi eky'ekikoola okutandika okwekeneenya."
+    )
+
+
+# =========================================================
 # TITLE
 # =========================================================
 
-st.title("🌿 Smart Plant Disease Detector")
+st.title(title)
 
-st.write(
-    "Upload or capture a clear image of a plant leaf. "
-    "The AI will analyze the image and provide a possible "
-    "plant disease prediction, confidence score and advice."
-)
+st.write(description)
 
-st.info(
-    "📸 For best results, use a clear close-up image "
-    "of one leaf with good lighting."
-)
+st.info(image_instruction)
 
 st.divider()
 
@@ -117,7 +298,6 @@ CLASS_NAMES = [
 @st.cache_resource
 def load_model():
 
-    # Download model if it is not already available
     if not os.path.exists(MODEL_PATH):
 
         with st.spinner(
@@ -140,14 +320,11 @@ def load_model():
                     response.content
                 )
 
-
-    # Load TensorFlow Lite model
     interpreter = tf.lite.Interpreter(
         model_path=MODEL_PATH
     )
 
     interpreter.allocate_tensors()
-
 
     input_details = (
         interpreter.get_input_details()
@@ -157,7 +334,6 @@ def load_model():
         interpreter.get_output_details()
     )
 
-
     return (
         interpreter,
         input_details,
@@ -166,7 +342,7 @@ def load_model():
 
 
 # =========================================================
-# AI PREDICTION FUNCTION
+# AI PREDICTION
 # =========================================================
 
 def predict_leaf(image):
@@ -177,10 +353,6 @@ def predict_leaf(image):
         output_details
     ) = load_model()
 
-
-    # -----------------------------------------------------
-    # GET MODEL INPUT SIZE
-    # -----------------------------------------------------
 
     input_shape = (
         input_details[0]["shape"]
@@ -195,10 +367,6 @@ def predict_leaf(image):
     )
 
 
-    # -----------------------------------------------------
-    # RESIZE IMAGE
-    # -----------------------------------------------------
-
     image = image.resize(
         (
             width,
@@ -207,19 +375,20 @@ def predict_leaf(image):
     )
 
 
-    # -----------------------------------------------------
-    # CONVERT IMAGE TO NUMPY
-    # -----------------------------------------------------
-
     image_array = np.array(
         image,
         dtype=np.float32
     )
 
 
-    # -----------------------------------------------------
-    # ADD BATCH DIMENSION
-    # -----------------------------------------------------
+    # IMPORTANT:
+    # This assumes the model expects pixel values
+    # from 0 to 255.
+    #
+    # If your specific model expects 0 to 1,
+    # change this to:
+    #
+    # image_array = image_array / 255.0
 
     image_array = np.expand_dims(
         image_array,
@@ -227,35 +396,19 @@ def predict_leaf(image):
     )
 
 
-    # -----------------------------------------------------
-    # SEND IMAGE TO AI MODEL
-    # -----------------------------------------------------
-
     interpreter.set_tensor(
         input_details[0]["index"],
         image_array
     )
 
 
-    # -----------------------------------------------------
-    # RUN AI MODEL
-    # -----------------------------------------------------
-
     interpreter.invoke()
 
-
-    # -----------------------------------------------------
-    # GET AI OUTPUT
-    # -----------------------------------------------------
 
     predictions = interpreter.get_tensor(
         output_details[0]["index"]
     )[0]
 
-
-    # -----------------------------------------------------
-    # GET TOP 5 PREDICTIONS
-    # -----------------------------------------------------
 
     top_indices = np.argsort(
         predictions
@@ -286,7 +439,7 @@ def predict_leaf(image):
 
 
 # =========================================================
-# CLEAR ADVICE FUNCTION
+# ADVICE FUNCTION
 # =========================================================
 
 def show_advice(
@@ -302,12 +455,11 @@ def show_advice(
     if confidence < 0.40:
 
         st.error(
-            "⚠️ LOW CONFIDENCE"
+            low_confidence
         )
 
         st.write(
-            "The AI is not confident enough "
-            "to provide a reliable diagnosis."
+            low_confidence_message
         )
 
         st.write(
@@ -327,7 +479,7 @@ def show_advice(
         )
 
         st.write(
-            "📱 Avoid blurry images."
+            "📱 Avoid blurry photographs."
         )
 
         st.write(
@@ -344,8 +496,8 @@ def show_advice(
         )
 
         st.warning(
-            "⚠️ Do not apply pesticides or chemicals "
-            "based only on a low-confidence AI prediction."
+            "⚠️ Do not apply chemical treatment "
+            "based only on a low-confidence prediction."
         )
 
         return
@@ -446,92 +598,6 @@ def show_advice(
 
 
     # =====================================================
-    # APPLE BLACK ROT
-    # =====================================================
-
-    if "Apple - Black Rot" in prediction:
-
-        st.warning(
-            "🍎 POSSIBLE APPLE BLACK ROT"
-        )
-
-        st.write(
-            "### 💡 What you should do:"
-        )
-
-        st.write(
-            "🔍 Inspect the tree and nearby plants."
-        )
-
-        st.write(
-            "🍂 Remove severely affected plant material "
-            "where appropriate."
-        )
-
-        st.write(
-            "🧹 Keep the growing area clean."
-        )
-
-        st.write(
-            "🍎 Remove fallen infected fruit or leaves."
-        )
-
-        st.write(
-            "👀 Monitor nearby plants for similar symptoms."
-        )
-
-        st.write(
-            "👨‍🌾 Consult an agricultural expert "
-            "for confirmation."
-        )
-
-        return
-
-
-    # =====================================================
-    # APPLE CEDAR APPLE RUST
-    # =====================================================
-
-    if "Apple - Cedar Apple Rust" in prediction:
-
-        st.warning(
-            "🍎 POSSIBLE APPLE CEDAR APPLE RUST"
-        )
-
-        st.write(
-            "### 💡 What you should do:"
-        )
-
-        st.write(
-            "🔍 Inspect other leaves for similar symptoms."
-        )
-
-        st.write(
-            "👀 Monitor the tree regularly."
-        )
-
-        st.write(
-            "🧹 Keep the growing area clean."
-        )
-
-        st.write(
-            "🌬️ Improve air circulation around the tree."
-        )
-
-        st.write(
-            "🍂 Remove severely affected leaves "
-            "where appropriate."
-        )
-
-        st.write(
-            "👨‍🌾 Consult an agricultural expert "
-            "for confirmation and management advice."
-        )
-
-        return
-
-
-    # =====================================================
     # TOMATO LATE BLIGHT
     # =====================================================
 
@@ -621,50 +687,7 @@ def show_advice(
 
 
     # =====================================================
-    # TOMATO LEAF MOLD
-    # =====================================================
-
-    if "Tomato - Leaf Mold" in prediction:
-
-        st.warning(
-            "🍅 POSSIBLE TOMATO LEAF MOLD"
-        )
-
-        st.write(
-            "### 💡 What you should do:"
-        )
-
-        st.write(
-            "🔍 Inspect other tomato plants."
-        )
-
-        st.write(
-            "🌬️ Improve air circulation around plants."
-        )
-
-        st.write(
-            "💧 Avoid unnecessary moisture on leaves."
-        )
-
-        st.write(
-            "🍂 Remove severely affected leaves "
-            "where appropriate."
-        )
-
-        st.write(
-            "👀 Monitor the crop for spreading symptoms."
-        )
-
-        st.write(
-            "👨‍🌾 Consult an agricultural expert "
-            "for confirmation."
-        )
-
-        return
-
-
-    # =====================================================
-    # GRAPE DISEASES
+    # GRAPE CONDITIONS
     # =====================================================
 
     if "Grape -" in prediction:
@@ -707,7 +730,7 @@ def show_advice(
 
 
     # =====================================================
-    # CORN DISEASES
+    # CORN CONDITIONS
     # =====================================================
 
     if "Corn -" in prediction:
@@ -744,7 +767,7 @@ def show_advice(
 
 
     # =====================================================
-    # POTATO DISEASES
+    # POTATO CONDITIONS
     # =====================================================
 
     if "Potato -" in prediction:
@@ -782,7 +805,7 @@ def show_advice(
 
 
     # =====================================================
-    # GENERAL DISEASE
+    # GENERAL CONDITION
     # =====================================================
 
     st.warning(
@@ -828,15 +851,15 @@ def show_advice(
 # =========================================================
 
 st.subheader(
-    "📷 Choose Your Leaf Image"
+    choose_image
 )
 
 
 input_method = st.radio(
-    "Select an option:",
+    "Select an option / Londa ekikozesebwa:",
     [
-        "Upload Image",
-        "Use Camera"
+        upload_image,
+        use_camera
     ],
     horizontal=True
 )
@@ -849,10 +872,10 @@ uploaded_file = None
 # UPLOAD IMAGE
 # =========================================================
 
-if input_method == "Upload Image":
+if input_method == upload_image:
 
     uploaded_file = st.file_uploader(
-        "Upload a clear plant leaf image",
+        upload_instruction,
         type=[
             "jpg",
             "jpeg",
@@ -868,24 +891,21 @@ if input_method == "Upload Image":
 else:
 
     uploaded_file = st.camera_input(
-        "Take a clear picture of the leaf"
+        camera_instruction
     )
 
 
 # =========================================================
-# IF IMAGE IS AVAILABLE
+# ANALYZE IMAGE
 # =========================================================
 
 if uploaded_file is not None:
 
-
-    # Open image
     image = Image.open(
         uploaded_file
     ).convert("RGB")
 
 
-    # Display image
     st.image(
         image,
         caption="Uploaded Plant Leaf",
@@ -896,12 +916,8 @@ if uploaded_file is not None:
     st.divider()
 
 
-    # =====================================================
-    # ANALYZE BUTTON
-    # =====================================================
-
     if st.button(
-        "🔍 ANALYZE LEAF",
+        analyze,
         use_container_width=True
     ):
 
@@ -909,39 +925,39 @@ if uploaded_file is not None:
         try:
 
 
-            # -------------------------------------------------
-            # RUN AI
-            # -------------------------------------------------
-
             with st.spinner(
                 "🤖 AI is analyzing the leaf..."
             ):
+
 
                 results = predict_leaf(
                     image
                 )
 
 
-            # -------------------------------------------------
+            if len(results) == 0:
+
+                st.error(
+                    "No prediction was produced."
+                )
+
+                st.stop()
+
+
+            # =================================================
             # BEST PREDICTION
-            # -------------------------------------------------
+            # =================================================
 
             best_result = results[0]
-
 
             prediction = (
                 best_result["name"]
             )
 
-
             confidence = (
                 best_result["confidence"]
             )
 
-
-            # -------------------------------------------------
-            # TIME
-            # -------------------------------------------------
 
             analysis_time = (
                 datetime.now().strftime(
@@ -951,16 +967,16 @@ if uploaded_file is not None:
 
 
             # =================================================
-            # RESULT
+            # MAIN RESULT
             # =================================================
 
             st.success(
-                "✅ Analysis Complete!"
+                analysis_complete
             )
 
 
             st.subheader(
-                "🌿 AI Prediction"
+                prediction_title
             )
 
 
@@ -970,18 +986,17 @@ if uploaded_file is not None:
 
 
             st.write(
-                f"**Confidence:** "
+                f"**{confidence}:** "
                 f"{confidence * 100:.2f}%"
             )
 
 
             st.write(
-                f"**Analysis Time:** "
+                f"**{analysis_time}:** "
                 f"{analysis_time}"
             )
 
 
-            # Confidence progress
             st.progress(
                 min(
                     max(
@@ -1002,42 +1017,34 @@ if uploaded_file is not None:
 
             if confidence < 0.40:
 
-
                 st.error(
-                    "⚠️ LOW CONFIDENCE"
+                    low_confidence
                 )
 
-
                 st.write(
-                    "The AI is uncertain about this result."
+                    low_confidence_message
                 )
 
 
             elif confidence < 0.70:
 
-
                 st.warning(
-                    "⚠️ MODERATE CONFIDENCE"
+                    moderate_confidence
                 )
 
-
                 st.write(
-                    "The AI has some uncertainty "
-                    "about this result."
+                    moderate_confidence_message
                 )
 
 
             else:
 
-
                 st.success(
-                    "✅ HIGHER CONFIDENCE"
+                    higher_confidence
                 )
 
-
                 st.write(
-                    "The AI has stronger confidence "
-                    "in this prediction."
+                    higher_confidence_message
                 )
 
 
@@ -1049,7 +1056,7 @@ if uploaded_file is not None:
 
 
             st.subheader(
-                "🔎 Top 5 AI Predictions"
+                top_predictions
             )
 
 
@@ -1057,7 +1064,6 @@ if uploaded_file is not None:
                 results,
                 start=1
             ):
-
 
                 st.write(
                     f"**{number}. "
@@ -1074,7 +1080,7 @@ if uploaded_file is not None:
 
 
             st.subheader(
-                "💡 Clear Advice"
+                clear_advice
             )
 
 
@@ -1092,7 +1098,7 @@ if uploaded_file is not None:
 
 
             st.subheader(
-                "📄 Download Analysis Report"
+                download_report
             )
 
 
@@ -1123,7 +1129,6 @@ TOP 5 PREDICTIONS
                 start=1
             ):
 
-
                 report += (
                     f"{number}. "
                     f"{result['name']} - "
@@ -1131,14 +1136,12 @@ TOP 5 PREDICTIONS
                 )
 
 
-            report += """
+            report += f"""
 
 IMPORTANT NOTICE
 ----------------------------------------
 
-This AI system provides a supporting prediction.
-It does not replace professional agricultural
-diagnosis.
+{important_notice}
 
 Confirm the diagnosis with a qualified
 agricultural professional before making
@@ -1152,7 +1155,7 @@ AI FOR SMART AGRICULTURE
 
 
             st.download_button(
-                label="📥 Download Analysis Report",
+                label=download_report,
                 data=report,
                 file_name=(
                     "plant_disease_analysis_report.txt"
@@ -1161,10 +1164,6 @@ AI FOR SMART AGRICULTURE
                 use_container_width=True
             )
 
-
-        # =====================================================
-        # ERROR HANDLING
-        # =====================================================
 
         except Exception as error:
 
@@ -1180,49 +1179,32 @@ AI FOR SMART AGRICULTURE
             )
 
 
-# =========================================================
-# NO IMAGE
-# =========================================================
-
 else:
 
-
     st.info(
-        "📷 Upload or capture a clear plant leaf image "
-        "to begin analysis."
+        no_image
     )
 
 
 # =========================================================
-# ABOUT PROJECT
+# ABOUT THE PROJECT
 # =========================================================
 
 st.divider()
 
 
 st.subheader(
-    "📖 About the Project"
+    about_title
 )
 
 
 st.write(
-    "The Smart Plant Disease Detector is an "
-    "Artificial Intelligence project designed "
-    "to support smart agriculture."
+    about_text
 )
 
 
 st.write(
-    "The system analyzes images of plant leaves "
-    "and provides possible disease predictions, "
-    "confidence scores and clear general advice."
-)
-
-
-st.write(
-    "The system is intended as a supporting tool "
-    "and should not replace professional agricultural "
-    "diagnosis."
+    important_notice
 )
 
 
@@ -1233,7 +1215,16 @@ st.write(
 st.divider()
 
 
-st.caption(
-    "🌿 Smart Plant Disease Detector | "
-    "AI for Smart Agriculture"
-)
+if language == "English":
+
+    st.caption(
+        "🌿 Smart Plant Disease Detector | "
+        "AI for Smart Agriculture"
+    )
+
+else:
+
+    st.caption(
+        "🌿 Pulogulaamu Eyekenneenya Obulwadde "
+        "bw'Ebimera | AI mu Bulimi"
+    )
