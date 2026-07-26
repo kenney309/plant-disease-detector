@@ -4,6 +4,7 @@ import numpy as np
 import tensorflow as tf
 import requests
 import os
+from datetime import datetime
 
 # =========================================================
 # PAGE CONFIGURATION
@@ -15,20 +16,12 @@ st.set_page_config(
     layout="wide"
 )
 
-# =========================================================
-# CUSTOM HEADER
-# =========================================================
-
 st.title("🌿 Smart Plant Disease Detector")
 
-st.markdown(
-    """
-    ### AI-Powered Smart Agriculture System
-
-    Upload or capture a clear image of a plant leaf.
-    The system will analyze the image and provide a possible
-    disease prediction, confidence score, and general guidance.
-    """
+st.write(
+    "Upload or capture a clear plant leaf image. "
+    "The AI will analyze the image and provide a possible "
+    "prediction, confidence score, and general guidance."
 )
 
 st.divider()
@@ -94,13 +87,13 @@ DISEASE_INFO = {
 
     "Apple - Apple Scab": {
         "symptoms": "Dark or olive-colored spots may appear on leaves and fruit.",
-        "treatment": "Remove heavily affected plant material and consider appropriate fungicide management.",
+        "treatment": "Remove affected plant material and follow appropriate disease-management guidance.",
         "prevention": "Improve air circulation and remove fallen infected leaves."
     },
 
     "Grape - Black Rot": {
         "symptoms": "Dark spots and lesions may develop on leaves and fruit.",
-        "treatment": "Remove infected material and use appropriate disease management practices.",
+        "treatment": "Remove infected material and follow suitable disease-management practices.",
         "prevention": "Maintain good vineyard sanitation and air circulation."
     },
 
@@ -112,14 +105,20 @@ DISEASE_INFO = {
 
     "Grape - Leaf Blight": {
         "symptoms": "Brown or dark lesions can appear on leaves.",
-        "treatment": "Remove infected leaves and use suitable disease management methods.",
+        "treatment": "Remove infected leaves and use suitable disease-management methods.",
         "prevention": "Avoid excessive leaf wetness and improve air circulation."
+    },
+
+    "Grape - Healthy": {
+        "symptoms": "No major disease symptoms were detected.",
+        "treatment": "Continue normal plant care and monitoring.",
+        "prevention": "Maintain good air circulation and monitor regularly."
     },
 
     "Tomato - Early Blight": {
         "symptoms": "Brown spots with ring-like patterns may develop on older leaves.",
-        "treatment": "Remove affected leaves and use appropriate fungicide management when recommended.",
-        "prevention": "Practice crop rotation and avoid watering foliage unnecessarily."
+        "treatment": "Remove affected leaves and follow appropriate disease-management guidance.",
+        "prevention": "Practice crop rotation and avoid unnecessary leaf wetness."
     },
 
     "Tomato - Late Blight": {
@@ -138,12 +137,6 @@ DISEASE_INFO = {
         "symptoms": "No major disease symptoms were detected.",
         "treatment": "Continue normal plant care.",
         "prevention": "Monitor the plant regularly and maintain good sanitation."
-    },
-
-    "Grape - Healthy": {
-        "symptoms": "No major disease symptoms were detected.",
-        "treatment": "Continue normal plant care.",
-        "prevention": "Maintain good air circulation and monitor regularly."
     }
 }
 
@@ -180,18 +173,14 @@ def load_model():
 
     interpreter.allocate_tensors()
 
-    input_details = interpreter.get_input_details()
-
-    output_details = interpreter.get_output_details()
-
     return (
         interpreter,
-        input_details,
-        output_details
+        interpreter.get_input_details(),
+        interpreter.get_output_details()
     )
 
 # =========================================================
-# PREDICTION FUNCTION
+# PREDICTION
 # =========================================================
 
 def predict_image(image):
@@ -238,20 +227,21 @@ def predict_image(image):
 
     for index in top_indices:
 
-        if index < len(CLASS_NAMES):
-
-            name = CLASS_NAMES[index]
-
-        else:
-
-            name = "Unknown"
+        name = (
+            CLASS_NAMES[index]
+            if index < len(CLASS_NAMES)
+            else "Unknown"
+        )
 
         confidence = float(
             prediction[index]
         )
 
         results.append(
-            (name, confidence)
+            (
+                name,
+                confidence
+            )
         )
 
     return results
@@ -263,7 +253,7 @@ def predict_image(image):
 st.sidebar.title("🌱 Plant Information")
 
 plant = st.sidebar.selectbox(
-    "Select the plant you are testing:",
+    "Select the plant:",
     [
         "Apple",
         "Banana",
@@ -275,16 +265,11 @@ plant = st.sidebar.selectbox(
     ]
 )
 
-st.sidebar.info(
-    "The current AI model supports a specific set of "
-    "plant and disease categories."
-)
-
 # =========================================================
-# INPUT SECTION
+# IMAGE INPUT
 # =========================================================
 
-st.subheader("📷 Upload or Capture a Leaf Image")
+st.subheader("📷 Upload or Capture a Leaf")
 
 input_method = st.radio(
     "Choose image source:",
@@ -330,12 +315,16 @@ if uploaded_file is not None:
         use_container_width=True
     )
 
-    if plant in ["Guava", "Mango", "Banana"]:
+    if plant in [
+        "Guava",
+        "Mango",
+        "Banana"
+    ]:
 
         st.warning(
-            f"⚠️ Note: The current AI model was not "
-            f"specifically trained to recognize {plant}. "
-            f"Predictions for this plant may be inaccurate."
+            f"⚠️ The current AI model was not specifically "
+            f"trained to recognize {plant}. "
+            f"The result may therefore be inaccurate."
         )
 
     if st.button(
@@ -357,22 +346,24 @@ if uploaded_file is not None:
 
             best_confidence = results[0][1]
 
+            current_time = datetime.now().strftime(
+                "%Y-%m-%d %H:%M:%S"
+            )
+
             st.success(
                 "Analysis complete!"
             )
 
-            st.divider()
-
             # =================================================
-            # MAIN RESULT
+            # RESULT
             # =================================================
 
             st.subheader(
-                "🌿 Main AI Prediction"
+                "🌿 Analysis Result"
             )
 
             st.write(
-                f"**Selected Plant:** {plant}"
+                f"**Plant Selected:** {plant}"
             )
 
             st.write(
@@ -382,6 +373,10 @@ if uploaded_file is not None:
             st.write(
                 f"**Confidence:** "
                 f"{best_confidence * 100:.2f}%"
+            )
+
+            st.write(
+                f"**Date and Time:** {current_time}"
             )
 
             st.progress(
@@ -401,23 +396,23 @@ if uploaded_file is not None:
             if best_confidence < 0.40:
 
                 st.error(
-                    "⚠️ LOW CONFIDENCE RESULT: "
-                    "The AI is not confident about this prediction. "
-                    "The plant may not be supported by the model "
-                    "or the image may be unclear."
+                    "⚠️ LOW CONFIDENCE: "
+                    "The AI is not confident about this result. "
+                    "The plant may not be supported by the model."
                 )
 
             elif best_confidence < 0.70:
 
                 st.warning(
                     "⚠️ MODERATE CONFIDENCE: "
-                    "Consider verifying this result."
+                    "Consider verifying the result."
                 )
 
             else:
 
                 st.success(
-                    "✅ HIGHER CONFIDENCE RESULT"
+                    "✅ The AI has a higher confidence "
+                    "in this prediction."
                 )
 
             # =================================================
@@ -425,7 +420,7 @@ if uploaded_file is not None:
             # =================================================
 
             st.subheader(
-                "🔎 Top 3 AI Predictions"
+                "🔎 Top 3 Predictions"
             )
 
             for number, (
@@ -442,7 +437,7 @@ if uploaded_file is not None:
                 )
 
             # =================================================
-            # DISEASE INFORMATION
+            # INFORMATION
             # =================================================
 
             if best_name in DISEASE_INFO:
@@ -472,39 +467,96 @@ if uploaded_file is not None:
                     f"{info['prevention']}"
                 )
 
+                symptoms = info["symptoms"]
+                treatment = info["treatment"]
+                prevention = info["prevention"]
+
             else:
 
+                symptoms = (
+                    "Detailed symptom information "
+                    "is not currently available."
+                )
+
+                treatment = (
+                    "Seek advice from a qualified "
+                    "agricultural professional."
+                )
+
+                prevention = (
+                    "Monitor the plant regularly "
+                    "and maintain good plant hygiene."
+                )
+
                 st.info(
-                    "Detailed information for this prediction "
-                    "is not yet available in the app."
+                    "Detailed information for this "
+                    "prediction is not yet available."
                 )
 
             # =================================================
-            # GENERAL ADVICE
+            # DOWNLOADABLE REPORT
             # =================================================
 
             st.divider()
 
             st.subheader(
-                "👨‍🌾 General Farmer Advice"
+                "📄 Download Analysis Report"
             )
 
-            st.write(
-                """
-                • Keep infected leaves away from healthy plants.
+            report = f"""
+SMART PLANT DISEASE DETECTOR
+================================
 
-                • Maintain good field and garden sanitation.
+PLANT INFORMATION
+-----------------
+Selected Plant: {plant}
 
-                • Monitor plants regularly for changes.
+ANALYSIS INFORMATION
+--------------------
+Date and Time: {current_time}
 
-                • Avoid unnecessary leaf wetness.
+AI PREDICTION
+-------------
+Prediction: {best_name}
+Confidence: {best_confidence * 100:.2f}%
 
-                • Use appropriate agricultural treatments
-                  according to local expert advice.
+TOP 3 AI PREDICTIONS
+--------------------
+1. {results[0][0]} - {results[0][1] * 100:.2f}%
 
-                • For serious or uncertain cases, consult
-                  an agricultural extension officer.
-                """
+2. {results[1][0]} - {results[1][1] * 100:.2f}%
+
+3. {results[2][0]} - {results[2][1] * 100:.2f}%
+
+DISEASE INFORMATION
+-------------------
+Symptoms:
+{symptoms}
+
+General Management:
+{treatment}
+
+Prevention:
+{prevention}
+
+IMPORTANT NOTICE
+----------------
+This AI result is for educational and supporting
+purposes only. It should not replace professional
+agricultural diagnosis. If the result has low confidence,
+consult a qualified agricultural expert.
+
+================================
+Smart Plant Disease Detector
+AI for Smart Agriculture
+"""
+
+            st.download_button(
+                label="📥 Download Analysis Report",
+                data=report,
+                file_name="plant_disease_analysis_report.txt",
+                mime="text/plain",
+                use_container_width=True
             )
 
         except Exception as e:
@@ -525,13 +577,13 @@ else:
     )
 
 # =========================================================
-# PROJECT INFORMATION
+# ABOUT
 # =========================================================
 
 st.divider()
 
 st.subheader(
-    "📖 About This Project"
+    "📖 About the Project"
 )
 
 st.write(
@@ -539,12 +591,12 @@ st.write(
     The Smart Plant Disease Detector is an Artificial
     Intelligence project designed to support smart agriculture.
 
-    The system analyzes plant leaf images and provides possible
-    disease predictions, confidence scores, and general
-    agricultural guidance.
+    The system analyzes plant leaf images and provides
+    possible disease predictions, confidence scores,
+    and general agricultural guidance.
 
-    The system is intended as a supporting tool and should not
-    replace professional agricultural diagnosis.
+    The system is intended as a supporting tool and should
+    not replace professional agricultural diagnosis.
     """
 )
 
