@@ -1,3 +1,4 @@
+```python
 import streamlit as st
 from PIL import Image, ImageStat
 import numpy as np
@@ -12,110 +13,10 @@ from datetime import datetime
 # =========================================================
 
 st.set_page_config(
-    page_title="Smart Plant Disease Detector",
-    page_icon="Plant",
+    page_title="Smart Plant Doctor",
+    page_icon=None,
     layout="centered"
 )
-
-
-# =========================================================
-# SESSION STATE
-# =========================================================
-
-if "history" not in st.session_state:
-    st.session_state.history = []
-
-if "last_prediction" not in st.session_state:
-    st.session_state.last_prediction = None
-
-if "last_confidence" not in st.session_state:
-    st.session_state.last_confidence = 0.0
-
-
-# =========================================================
-# CUSTOM STYLE
-# =========================================================
-
-st.markdown(
-    """
-    <style>
-
-    .main-title {
-        font-size: 36px;
-        font-weight: bold;
-        text-align: center;
-        margin-bottom: 10px;
-    }
-
-    .subtitle {
-        font-size: 18px;
-        text-align: center;
-        margin-bottom: 25px;
-    }
-
-    .result-box {
-        padding: 20px;
-        border-radius: 10px;
-        border: 1px solid #cccccc;
-        margin-top: 15px;
-        margin-bottom: 15px;
-    }
-
-    .section-title {
-        font-size: 24px;
-        font-weight: bold;
-        margin-top: 20px;
-    }
-
-    </style>
-    """,
-    unsafe_allow_html=True
-)
-
-
-# =========================================================
-# TITLE
-# =========================================================
-
-st.markdown(
-    '<div class="main-title">Smart Plant Disease Detector</div>',
-    unsafe_allow_html=True
-)
-
-st.markdown(
-    '<div class="subtitle">AI for Smart Agriculture</div>',
-    unsafe_allow_html=True
-)
-
-st.write(
-    "This system analyzes plant leaf images and provides "
-    "possible disease predictions, confidence scores, "
-    "general management advice and prevention information."
-)
-
-st.info(
-    "For better results, use a clear close-up image of one "
-    "plant leaf with good lighting."
-)
-
-st.divider()
-
-
-# =========================================================
-# LANGUAGE
-# =========================================================
-
-language = st.selectbox(
-    "Choose Language",
-    ["English", "Luganda"]
-)
-
-if language == "Luganda":
-
-    st.info(
-        "Olonda Olulimi: Luganda. "
-        "Ebimu ku bikwata ku pulogulaamu bikyali mu Lungereza."
-    )
 
 
 # =========================================================
@@ -133,6 +34,9 @@ MODEL_PATH = "plant_disease_model.tflite"
 
 # =========================================================
 # CLASS NAMES
+# IMPORTANT:
+# These must match the exact order used when the model
+# was trained.
 # =========================================================
 
 CLASS_NAMES = [
@@ -178,10 +82,84 @@ CLASS_NAMES = [
 
 
 # =========================================================
-# SUPPORTED PLANTS
+# SESSION STATE
 # =========================================================
 
-SUPPORTED_PLANTS = [
+if "history" not in st.session_state:
+    st.session_state.history = []
+
+if "last_result" not in st.session_state:
+    st.session_state.last_result = None
+
+
+# =========================================================
+# STYLING
+# =========================================================
+
+st.markdown(
+    """
+    <style>
+
+    .title {
+        text-align: center;
+        font-size: 36px;
+        font-weight: bold;
+    }
+
+    .subtitle {
+        text-align: center;
+        font-size: 18px;
+    }
+
+    .result-box {
+        padding: 20px;
+        border-radius: 12px;
+        border: 1px solid #cccccc;
+        margin-top: 15px;
+        margin-bottom: 15px;
+    }
+
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+
+
+# =========================================================
+# TITLE
+# =========================================================
+
+st.markdown(
+    '<div class="title">Smart Plant Disease Detector</div>',
+    unsafe_allow_html=True
+)
+
+st.markdown(
+    '<div class="subtitle">AI for Smart Agriculture</div>',
+    unsafe_allow_html=True
+)
+
+st.write(
+    "Upload or capture a clear image of a plant leaf. "
+    "The AI will analyze the image and provide a possible "
+    "plant health prediction."
+)
+
+st.warning(
+    "This system provides a possible AI prediction. "
+    "It should not replace professional agricultural diagnosis."
+)
+
+st.divider()
+
+
+# =========================================================
+# PLANT SELECTION
+# =========================================================
+
+st.subheader("Select Plant")
+
+PLANTS = [
     "Apple",
     "Blueberry",
     "Cherry",
@@ -198,16 +176,9 @@ SUPPORTED_PLANTS = [
     "Tomato"
 ]
 
-
-# =========================================================
-# PLANT SELECTION
-# =========================================================
-
-st.subheader("Plant Selection")
-
-plant = st.selectbox(
-    "Select the plant you want to analyze",
-    SUPPORTED_PLANTS
+selected_plant = st.selectbox(
+    "Which plant are you analyzing?",
+    PLANTS
 )
 
 
@@ -221,7 +192,7 @@ def load_model():
     if not os.path.exists(MODEL_PATH):
 
         with st.spinner(
-            "Downloading the AI model for the first time..."
+            "Downloading AI model for the first time..."
         ):
 
             response = requests.get(
@@ -246,9 +217,13 @@ def load_model():
 
     interpreter.allocate_tensors()
 
-    input_details = interpreter.get_input_details()
+    input_details = (
+        interpreter.get_input_details()
+    )
 
-    output_details = interpreter.get_output_details()
+    output_details = (
+        interpreter.get_output_details()
+    )
 
     return (
         interpreter,
@@ -263,49 +238,46 @@ def load_model():
 
 def check_image_quality(image):
 
-    gray_image = image.convert("L")
-
-    brightness = ImageStat.Stat(
-        gray_image
-    ).mean[0]
-
     width, height = image.size
 
     if width < 200 or height < 200:
 
         return (
             False,
-            "Image resolution is too low. "
-            "Please use a clearer image."
+            "The image is too small. Please use a clearer image."
         )
+
+    gray = image.convert("L")
+
+    brightness = ImageStat.Stat(
+        gray
+    ).mean[0]
 
     if brightness < 35:
 
         return (
             False,
-            "Image is too dark. "
-            "Please take the photo in better lighting."
+            "The image is too dark. Take the photo in better lighting."
         )
 
     if brightness > 245:
 
         return (
             False,
-            "Image is too bright. "
-            "Please reduce excessive lighting."
+            "The image is too bright. Reduce excessive lighting."
         )
 
     return (
         True,
-        "Image quality appears suitable."
+        "Image quality looks suitable for analysis."
     )
 
 
 # =========================================================
-# PREDICTION FUNCTION
+# AI PREDICTION
 # =========================================================
 
-def predict_leaf(image):
+def predict_image(image):
 
     (
         interpreter,
@@ -313,7 +285,9 @@ def predict_leaf(image):
         output_details
     ) = load_model()
 
-    input_shape = input_details[0]["shape"]
+    input_shape = (
+        input_details[0]["shape"]
+    )
 
     height = int(
         input_shape[1]
@@ -332,6 +306,15 @@ def predict_leaf(image):
         dtype=np.float32
     )
 
+    # IMPORTANT:
+    # This assumes the model expects values from 0 to 1.
+    # If the original model was trained with another
+    # preprocessing method, this must be changed.
+
+    image_array = (
+        image_array / 255.0
+    )
+
     image_array = np.expand_dims(
         image_array,
         axis=0
@@ -344,14 +327,18 @@ def predict_leaf(image):
 
     interpreter.invoke()
 
-    predictions = interpreter.get_tensor(
+    output = interpreter.get_tensor(
         output_details[0]["index"]
-    )[0]
+    )
+
+    predictions = output[0]
 
     predictions = np.asarray(
         predictions,
         dtype=np.float32
     )
+
+    # Convert logits to probabilities if necessary
 
     if (
         np.min(predictions) < 0
@@ -363,13 +350,13 @@ def predict_leaf(image):
         )
     ):
 
-        exp_predictions = np.exp(
+        exp_values = np.exp(
             predictions - np.max(predictions)
         )
 
         predictions = (
-            exp_predictions
-            / np.sum(exp_predictions)
+            exp_values
+            / np.sum(exp_values)
         )
 
     top_indices = np.argsort(
@@ -383,208 +370,25 @@ def predict_leaf(image):
         if index < len(CLASS_NAMES):
 
             results.append(
-                {
-                    "name": CLASS_NAMES[index],
-                    "confidence": float(
+                (
+                    CLASS_NAMES[index],
+                    float(
                         predictions[index]
                     )
-                }
+                )
             )
 
     return results
 
 
 # =========================================================
-# DISEASE INFORMATION
+# RECOMMENDATIONS
 # =========================================================
 
-DISEASE_INFO = {
-
-    "Apple - Apple Scab":
-        "Apple scab is a fungal disease that can affect "
-        "apple leaves and fruit. Symptoms may include "
-        "dark or olive-colored spots.",
-
-    "Apple - Black Rot":
-        "Black rot is a fungal disease that can affect "
-        "apple leaves, fruit and branches.",
-
-    "Apple - Cedar Apple Rust":
-        "Cedar apple rust is a fungal disease that can "
-        "cause yellow or orange symptoms on leaves.",
-
-    "Corn - Common Rust":
-        "Common rust is a fungal disease of corn that "
-        "can produce reddish-brown rust-like spots.",
-
-    "Corn - Northern Leaf Blight":
-        "Northern leaf blight can cause long gray or "
-        "brown lesions on corn leaves.",
-
-    "Tomato - Early Blight":
-        "Early blight can cause dark spots and lesions "
-        "on tomato leaves.",
-
-    "Tomato - Late Blight":
-        "Late blight is a serious disease that can "
-        "affect tomato and potato crops.",
-
-    "Potato - Early Blight":
-        "Potato early blight can cause dark lesions "
-        "on potato leaves.",
-
-    "Potato - Late Blight":
-        "Potato late blight can spread rapidly under "
-        "favorable conditions.",
-
-    "Grape - Black Rot":
-        "Grape black rot is a fungal disease that can "
-        "affect grape leaves and fruit.",
-
-    "Grape - Esca (Black Measles)":
-        "Esca is a complex grapevine disease associated "
-        "with wood-inhabiting fungi.",
-
-    "Grape - Leaf Blight":
-        "Grape leaf blight can cause damage to grape "
-        "leaves and affect plant growth."
-}
-
-
-# =========================================================
-# OFFLINE PLANT HEALTH GUIDE
-# =========================================================
-
-OFFLINE_GUIDE = {
-
-    "Apple": {
-        "Common conditions":
-            "Apple scab, black rot and cedar apple rust.",
-        "General advice":
-            "Inspect leaves regularly, keep the growing "
-            "area clean and improve air circulation."
-    },
-
-    "Blueberry": {
-        "Common conditions":
-            "The current model mainly provides a healthy "
-            "classification for blueberry.",
-        "General advice":
-            "Monitor plants regularly and inspect for "
-            "unusual leaf or fruit symptoms."
-    },
-
-    "Cherry": {
-        "Common conditions":
-            "Powdery mildew and other plant health problems.",
-        "General advice":
-            "Maintain good air circulation and monitor "
-            "new growth."
-    },
-
-    "Corn": {
-        "Common conditions":
-            "Common rust, northern leaf blight and "
-            "cercospora leaf spot.",
-        "General advice":
-            "Inspect plants regularly and maintain good "
-            "field hygiene."
-    },
-
-    "Grape": {
-        "Common conditions":
-            "Black rot, Esca and leaf blight.",
-        "General advice":
-            "Monitor leaves and fruit and maintain good "
-            "air circulation."
-    },
-
-    "Orange": {
-        "Common conditions":
-            "The current model includes citrus greening.",
-        "General advice":
-            "Inspect trees regularly and seek expert advice "
-            "when unusual symptoms appear."
-    },
-
-    "Peach": {
-        "Common conditions":
-            "Bacterial spot.",
-        "General advice":
-            "Monitor leaves and fruit and maintain good "
-            "orchard hygiene."
-    },
-
-    "Pepper": {
-        "Common conditions":
-            "Bacterial spot.",
-        "General advice":
-            "Use healthy planting material and monitor "
-            "plants regularly."
-    },
-
-    "Potato": {
-        "Common conditions":
-            "Early blight and late blight.",
-        "General advice":
-            "Inspect plants regularly and seek expert "
-            "advice when symptoms appear."
-    },
-
-    "Raspberry": {
-        "Common conditions":
-            "The current model mainly provides a healthy "
-            "classification for raspberry.",
-        "General advice":
-            "Monitor plants regularly for unusual symptoms."
-    },
-
-    "Soybean": {
-        "Common conditions":
-            "The current model mainly provides a healthy "
-            "classification for soybean.",
-        "General advice":
-            "Inspect plants regularly and maintain good "
-            "field hygiene."
-    },
-
-    "Squash": {
-        "Common conditions":
-            "Powdery mildew.",
-        "General advice":
-            "Maintain good air circulation and monitor "
-            "leaves regularly."
-    },
-
-    "Strawberry": {
-        "Common conditions":
-            "Leaf scorch.",
-        "General advice":
-            "Monitor leaves and maintain good growing "
-            "conditions."
-    },
-
-    "Tomato": {
-        "Common conditions":
-            "Bacterial spot, early blight, late blight, "
-            "leaf mold, septoria leaf spot, spider mites, "
-            "target spot and viral diseases.",
-        "General advice":
-            "Inspect plants regularly and seek professional "
-            "confirmation before applying treatments."
-    }
-}
-
-
-# =========================================================
-# GENERAL MANAGEMENT ADVICE
-# =========================================================
-
-def show_advice():
+def show_recommendations():
 
     st.write(
-        "Inspect the affected plant and nearby plants "
-        "for similar symptoms."
+        "Inspect the affected plant and nearby plants."
     )
 
     st.write(
@@ -597,7 +401,7 @@ def show_advice():
     )
 
     st.write(
-        "Improve air circulation around plants."
+        "Improve air circulation around the plants."
     )
 
     st.write(
@@ -605,7 +409,7 @@ def show_advice():
     )
 
     st.write(
-        "Monitor the plant regularly."
+        "Monitor new symptoms regularly."
     )
 
     st.write(
@@ -624,69 +428,19 @@ def show_prevention():
     )
 
     st.write(
-        "Keep the field or garden clean."
-    )
-
-    st.write(
         "Inspect plants regularly."
     )
 
     st.write(
-        "Maintain good spacing and air circulation."
+        "Keep the growing area clean."
+    )
+
+    st.write(
+        "Maintain good spacing between plants."
     )
 
     st.write(
         "Avoid unnecessary moisture on leaves."
-    )
-
-    st.write(
-        "Follow recommendations from agricultural experts."
-    )
-
-
-# =========================================================
-# OFFLINE MODE
-# =========================================================
-
-st.divider()
-
-st.subheader("Offline Plant Health Guide")
-
-st.write(
-    "This section provides basic plant health information "
-    "without requiring an AI prediction."
-)
-
-offline_plant = st.selectbox(
-    "Select a plant for offline information",
-    SUPPORTED_PLANTS,
-    key="offline_plant"
-)
-
-if offline_plant in OFFLINE_GUIDE:
-
-    guide = OFFLINE_GUIDE[
-        offline_plant
-    ]
-
-    st.write(
-        "Plant: "
-        + offline_plant
-    )
-
-    st.write(
-        "Common conditions: "
-        + guide["Common conditions"]
-    )
-
-    st.write(
-        "General advice: "
-        + guide["General advice"]
-    )
-
-    st.warning(
-        "Offline information is general guidance and "
-        "does not replace professional diagnosis."
     )
 
 
@@ -697,16 +451,15 @@ if offline_plant in OFFLINE_GUIDE:
 st.divider()
 
 st.subheader(
-    "Plant Leaf Analysis"
+    "Leaf Image"
 )
 
 input_method = st.radio(
-    "Choose how to provide the leaf image",
+    "Choose image source",
     [
         "Upload Image",
         "Use Camera"
-    ],
-    horizontal=True
+    ]
 )
 
 uploaded_file = None
@@ -715,7 +468,7 @@ uploaded_file = None
 if input_method == "Upload Image":
 
     uploaded_file = st.file_uploader(
-        "Upload a clear plant leaf image",
+        "Choose a leaf image",
         type=[
             "jpg",
             "jpeg",
@@ -726,12 +479,12 @@ if input_method == "Upload Image":
 else:
 
     uploaded_file = st.camera_input(
-        "Take a clear photograph of the leaf"
+        "Take a photo of the leaf"
     )
 
 
 # =========================================================
-# IMAGE ANALYSIS
+# ANALYSIS
 # =========================================================
 
 if uploaded_file is not None:
@@ -763,21 +516,15 @@ if uploaded_file is not None:
         )
 
 
-    st.divider()
-
-    analyze_button = st.button(
+    if st.button(
         "ANALYZE LEAF",
         use_container_width=True
-    )
-
-
-    if analyze_button:
+    ):
 
         if not quality_ok:
 
-            st.warning(
-                "Please provide a clearer image before "
-                "continuing with the analysis."
+            st.error(
+                "Please upload a clearer image before analysis."
             )
 
         else:
@@ -785,10 +532,10 @@ if uploaded_file is not None:
             try:
 
                 with st.spinner(
-                    "AI is analyzing the plant leaf..."
+                    "AI is analyzing the leaf..."
                 ):
 
-                    results = predict_leaf(
+                    results = predict_image(
                         image
                     )
 
@@ -796,18 +543,18 @@ if uploaded_file is not None:
                 if not results:
 
                     st.error(
-                        "No prediction was produced."
+                        "The AI did not return a prediction."
                     )
 
                     st.stop()
 
 
                 prediction = (
-                    results[0]["name"]
+                    results[0][0]
                 )
 
                 confidence = (
-                    results[0]["confidence"]
+                    results[0][1]
                 )
 
                 analysis_time = (
@@ -817,17 +564,8 @@ if uploaded_file is not None:
                 )
 
 
-                st.session_state.last_prediction = (
-                    prediction
-                )
-
-                st.session_state.last_confidence = (
-                    confidence
-                )
-
-
                 # =========================================
-                # MAIN RESULT
+                # RESULT
                 # =========================================
 
                 st.divider()
@@ -838,7 +576,7 @@ if uploaded_file is not None:
 
                 st.write(
                     "Plant Selected: "
-                    + plant
+                    + selected_plant
                 )
 
                 st.write(
@@ -856,19 +594,9 @@ if uploaded_file is not None:
                     + analysis_time
                 )
 
-                st.progress(
-                    min(
-                        max(
-                            confidence,
-                            0.0
-                        ),
-                        1.0
-                    )
-                )
-
 
                 # =========================================
-                # PLANT MATCH
+                # PLANT MISMATCH CHECK
                 # =========================================
 
                 predicted_plant = (
@@ -877,21 +605,31 @@ if uploaded_file is not None:
                     )[0]
                 )
 
+                if (
+                    predicted_plant
+                    != selected_plant
+                ):
 
-                if predicted_plant != plant:
+                    st.error(
+                        "PLANT MISMATCH"
+                    )
 
-                    st.warning(
-                        "The selected plant is "
-                        + plant
-                        + ", but the AI predicted a class "
-                        + "belonging to "
+                    st.write(
+                        "You selected "
+                        + selected_plant
+                        + ", but the AI predicted "
                         + predicted_plant
-                        + ". The result may be unreliable."
+                        + "."
+                    )
+
+                    st.write(
+                        "This prediction may be unreliable. "
+                        "Please check the image and try again."
                     )
 
 
                 # =========================================
-                # CONFIDENCE
+                # CONFIDENCE WARNING
                 # =========================================
 
                 if confidence < 0.40:
@@ -901,22 +639,15 @@ if uploaded_file is not None:
                     )
 
                     st.write(
-                        "The AI is not confident about this "
-                        "prediction. The result may be incorrect."
+                        "The AI is not confident about this result."
                     )
 
                     st.write(
-                        "Take another clear photograph "
-                        "with good lighting."
+                        "The prediction may be incorrect."
                     )
 
                     st.write(
-                        "Make sure the leaf is clearly visible."
-                    )
-
-                    st.write(
-                        "Consult an agricultural expert "
-                        "for confirmation."
+                        "Try another clear photograph."
                     )
 
                 elif confidence < 0.70:
@@ -926,8 +657,7 @@ if uploaded_file is not None:
                     )
 
                     st.write(
-                        "The AI has some uncertainty about "
-                        "this result."
+                        "The AI has some uncertainty about this result."
                     )
 
                 else:
@@ -938,7 +668,40 @@ if uploaded_file is not None:
 
 
                 # =========================================
-                # TOP 5
+                # HEALTH STATUS
+                # =========================================
+
+                st.divider()
+
+                st.subheader(
+                    "Plant Health Status"
+                )
+
+                if "Healthy" in prediction:
+
+                    status = "Likely Healthy"
+
+                elif confidence >= 0.70:
+
+                    status = "Possible Disease Detected"
+
+                elif confidence >= 0.40:
+
+                    status = "Needs Further Investigation"
+
+                else:
+
+                    status = "Unable to Confirm"
+
+
+                st.write(
+                    "Status: "
+                    + status
+                )
+
+
+                # =========================================
+                # TOP 5 PREDICTIONS
                 # =========================================
 
                 st.divider()
@@ -947,16 +710,13 @@ if uploaded_file is not None:
                     "Top 5 AI Predictions"
                 )
 
-                chart_data = {}
-
-                for number, result in enumerate(
+                for number, (
+                    name,
+                    score
+                ) in enumerate(
                     results,
                     start=1
                 ):
-
-                    name = result["name"]
-
-                    score = result["confidence"]
 
                     st.write(
                         str(number)
@@ -966,55 +726,9 @@ if uploaded_file is not None:
                         + f"{score * 100:.2f}%"
                     )
 
-                    chart_data[name] = score
-
-
-                st.bar_chart(
-                    chart_data
-                )
-
 
                 # =========================================
-                # DISEASE INFORMATION
-                # =========================================
-
-                st.divider()
-
-                st.subheader(
-                    "Disease Information"
-                )
-
-
-                if "Healthy" in prediction:
-
-                    st.success(
-                        "The AI prediction indicates that "
-                        "the plant may be healthy."
-                    )
-
-                    st.write(
-                        "Continue monitoring the plant regularly "
-                        "for new symptoms."
-                    )
-
-                elif prediction in DISEASE_INFO:
-
-                    st.write(
-                        DISEASE_INFO[prediction]
-                    )
-
-                else:
-
-                    st.write(
-                        "The AI has identified a possible "
-                        "plant health condition. Further "
-                        "professional assessment is needed "
-                        "to confirm the diagnosis."
-                    )
-
-
-                # =========================================
-                # MANAGEMENT
+                # RECOMMENDATIONS
                 # =========================================
 
                 st.divider()
@@ -1023,7 +737,7 @@ if uploaded_file is not None:
                     "Recommended Actions"
                 )
 
-                show_advice()
+                show_recommendations()
 
 
                 # =========================================
@@ -1040,51 +754,24 @@ if uploaded_file is not None:
 
 
                 # =========================================
-                # HEALTH STATUS
+                # SAVE RESULT
                 # =========================================
 
-                st.divider()
-
-                st.subheader(
-                    "Plant Health Status"
-                )
-
-
-                if "Healthy" in prediction:
-
-                    health_status = "Healthy"
-
-                elif confidence >= 0.70:
-
-                    health_status = "High Risk"
-
-                elif confidence >= 0.40:
-
-                    health_status = "Needs Attention"
-
-                else:
-
-                    health_status = "Uncertain"
-
-
-                st.write(
-                    "Current Plant Health Status: "
-                    + health_status
-                )
-
-
-                # =========================================
-                # SAVE HISTORY
-                # =========================================
+                st.session_state.last_result = {
+                    "plant": selected_plant,
+                    "prediction": prediction,
+                    "confidence": confidence,
+                    "time": analysis_time
+                }
 
                 st.session_state.history.append(
                     {
                         "Time": analysis_time,
-                        "Plant": plant,
+                        "Plant": selected_plant,
                         "Prediction": prediction,
                         "Confidence":
                             f"{confidence * 100:.2f}%",
-                        "Status": health_status
+                        "Status": status
                     }
                 )
 
@@ -1092,181 +779,12 @@ if uploaded_file is not None:
             except Exception as error:
 
                 st.error(
-                    "An error occurred while analyzing "
-                    "the image."
+                    "An error occurred during analysis."
                 )
 
                 st.code(
                     str(error)
                 )
-
-
-else:
-
-    st.info(
-        "Upload or capture a clear plant leaf image "
-        "to begin analysis."
-    )
-
-
-# =========================================================
-# PLANT DOCTOR
-# =========================================================
-
-st.divider()
-
-st.subheader(
-    "Ask the Plant Doctor"
-)
-
-st.write(
-    "Ask a question about plant diseases, prevention "
-    "or general management."
-)
-
-question = st.text_input(
-    "Type your question here"
-)
-
-
-if st.button(
-    "GET PLANT ADVICE",
-    use_container_width=True
-):
-
-    if question.strip() == "":
-
-        st.warning(
-            "Please type a question first."
-        )
-
-    else:
-
-        question_lower = (
-            question.lower()
-        )
-
-        st.success(
-            "Plant Doctor Advice"
-        )
-
-
-        if (
-            "what is" in question_lower
-            or "meaning" in question_lower
-        ):
-
-            st.write(
-                "The AI prediction represents a possible "
-                "plant health condition identified from "
-                "the uploaded image."
-            )
-
-            st.write(
-                "For accurate diagnosis, compare symptoms "
-                "with reliable agricultural information "
-                "and consult an agricultural professional."
-            )
-
-
-        elif (
-            "treat" in question_lower
-            or "treatment" in question_lower
-            or "cure" in question_lower
-        ):
-
-            st.write(
-                "Confirm the diagnosis before applying "
-                "any treatment."
-            )
-
-            st.write(
-                "Inspect nearby plants."
-            )
-
-            st.write(
-                "Remove severely affected plant material "
-                "where appropriate."
-            )
-
-            st.write(
-                "Improve air circulation."
-            )
-
-            st.write(
-                "Avoid unnecessary wetting of leaves."
-            )
-
-            st.write(
-                "Consult an agricultural expert."
-            )
-
-
-        elif (
-            "prevent" in question_lower
-            or "avoid" in question_lower
-        ):
-
-            show_prevention()
-
-
-        elif (
-            "spread" in question_lower
-            or "spreading" in question_lower
-        ):
-
-            st.write(
-                "Some plant diseases can spread through "
-                "water, insects, contaminated tools, "
-                "infected plant material or environmental "
-                "conditions."
-            )
-
-            st.write(
-                "Inspect nearby plants and monitor them "
-                "regularly."
-            )
-
-
-        elif (
-            "healthy" in question_lower
-        ):
-
-            st.write(
-                "Continue monitoring the plant regularly."
-            )
-
-            st.write(
-                "Provide appropriate water and nutrients."
-            )
-
-            st.write(
-                "Check regularly for new symptoms."
-            )
-
-
-        else:
-
-            if st.session_state.last_prediction:
-
-                st.write(
-                    "Latest AI prediction: "
-                    + st.session_state.last_prediction
-                )
-
-            st.write(
-                "Inspect the plant carefully, monitor "
-                "nearby plants and consult an agricultural "
-                "expert if symptoms continue."
-            )
-
-            st.info(
-                "You can ask questions such as "
-                "What is this disease? "
-                "How can I prevent it? "
-                "Can it spread? "
-                "or How should I manage it?"
-            )
 
 
 # =========================================================
@@ -1278,7 +796,6 @@ st.divider()
 st.subheader(
     "Analysis History"
 )
-
 
 if st.session_state.history:
 
@@ -1298,7 +815,7 @@ else:
 # DOWNLOAD REPORT
 # =========================================================
 
-if st.session_state.last_prediction:
+if st.session_state.last_result:
 
     st.divider()
 
@@ -1306,61 +823,209 @@ if st.session_state.last_prediction:
         "Download Analysis Report"
     )
 
+    result = (
+        st.session_state.last_result
+    )
+
     report = f"""
 SMART PLANT DISEASE DETECTOR
-========================================
+====================================
 
-PLANT SELECTED
-{plant}
+PLANT SELECTED:
+{result["plant"]}
 
-AI PREDICTION
-{st.session_state.last_prediction}
+AI PREDICTION:
+{result["prediction"]}
 
-CONFIDENCE
-{st.session_state.last_confidence * 100:.2f}%
+CONFIDENCE:
+{result["confidence"] * 100:.2f}%
 
-ANALYSIS DATE
-{datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
+ANALYSIS TIME:
+{result["time"]}
 
+RECOMMENDATIONS:
+- Inspect the affected plant.
+- Inspect nearby plants.
+- Keep the growing area clean.
+- Improve air circulation.
+- Avoid unnecessary wetting of leaves.
+- Monitor the plant regularly.
+- Consult an agricultural expert for confirmation.
 
-GENERAL RECOMMENDATIONS
-========================================
-
-Inspect the plant and nearby plants.
-
-Keep the growing area clean.
-
-Monitor the plant regularly.
-
-Improve air circulation.
-
-Avoid unnecessary wetting of leaves.
-
-Consult an agricultural expert for confirmation.
-
-
-IMPORTANT NOTICE
-========================================
-
-This AI system provides a supporting prediction.
+IMPORTANT:
+This AI prediction is for support and information.
 It does not replace professional agricultural diagnosis.
-
-Confirm important disease diagnoses with a qualified
-agricultural professional.
-
-
-SMART PLANT DISEASE DETECTOR
-AI FOR SMART AGRICULTURE
-========================================
 """
 
     st.download_button(
-        label="Download Analysis Report",
+        "Download Analysis Report",
         data=report,
-        file_name="plant_disease_report.txt",
+        file_name="plant_disease_analysis.txt",
         mime="text/plain",
         use_container_width=True
     )
+
+
+# =========================================================
+# OFFLINE PLANT GUIDE
+# =========================================================
+
+st.divider()
+
+st.subheader(
+    "Offline Plant Health Guide"
+)
+
+st.write(
+    "Use this section to access basic plant health "
+    "information even when you do not need an AI prediction."
+)
+
+offline_plant = st.selectbox(
+    "Choose a plant",
+    PLANTS,
+    key="offline_plant"
+)
+
+
+OFFLINE_INFO = {
+
+    "Apple":
+        "Common conditions include apple scab, black rot "
+        "and cedar apple rust.",
+
+    "Blueberry":
+        "Monitor leaves and fruit regularly for unusual "
+        "changes or symptoms.",
+
+    "Cherry":
+        "Powdery mildew is one condition included in "
+        "the current AI model.",
+
+    "Corn":
+        "The model includes common rust, northern leaf "
+        "blight and cercospora leaf spot.",
+
+    "Grape":
+        "The model includes black rot, Esca and leaf blight.",
+
+    "Orange":
+        "The model includes Huanglongbing, also known as "
+        "citrus greening.",
+
+    "Peach":
+        "The model includes bacterial spot.",
+
+    "Pepper":
+        "The model includes bacterial spot.",
+
+    "Potato":
+        "The model includes early blight and late blight.",
+
+    "Raspberry":
+        "Monitor plants regularly for unusual symptoms.",
+
+    "Soybean":
+        "Monitor plants regularly and maintain good "
+        "field hygiene.",
+
+    "Squash":
+        "The model includes powdery mildew.",
+
+    "Strawberry":
+        "The model includes leaf scorch.",
+
+    "Tomato":
+        "The model includes bacterial spot, early blight, "
+        "late blight, leaf mold, septoria leaf spot, "
+        "spider mites, target spot and viral diseases."
+}
+
+
+st.write(
+    OFFLINE_INFO[offline_plant]
+)
+
+st.warning(
+    "This information is general guidance and does not "
+    "replace professional diagnosis."
+)
+
+
+# =========================================================
+# PLANT DOCTOR
+# =========================================================
+
+st.divider()
+
+st.subheader(
+    "Plant Doctor"
+)
+
+st.write(
+    "Ask a general question about plant health."
+)
+
+question = st.text_input(
+    "Your question"
+)
+
+if st.button(
+    "GET ADVICE",
+    use_container_width=True
+):
+
+    if question.strip() == "":
+
+        st.warning(
+            "Please enter a question."
+        )
+
+    else:
+
+        q = question.lower()
+
+        if (
+            "prevent" in q
+            or "avoid" in q
+        ):
+
+            st.write(
+                "Use healthy planting material, inspect "
+                "plants regularly, maintain good spacing, "
+                "keep the growing area clean and avoid "
+                "unnecessary moisture on leaves."
+            )
+
+        elif (
+            "treat" in q
+            or "treatment" in q
+        ):
+
+            st.write(
+                "Confirm the diagnosis before applying "
+                "any treatment. Inspect nearby plants, "
+                "remove severely affected material where "
+                "appropriate and consult an agricultural expert."
+            )
+
+        elif (
+            "spread" in q
+        ):
+
+            st.write(
+                "Some plant diseases can spread through "
+                "water, insects, contaminated tools, infected "
+                "plant material and environmental conditions."
+            )
+
+        else:
+
+            st.write(
+                "Carefully inspect the plant, monitor "
+                "nearby plants and seek professional "
+                "agricultural advice when necessary."
+            )
 
 
 # =========================================================
@@ -1385,13 +1050,8 @@ st.write(
 )
 
 st.write(
-    "The project is designed as a supporting tool for "
+    "The project is intended as a supporting tool for "
     "students, farmers and agricultural users."
-)
-
-st.warning(
-    "The AI is a supporting tool and should not replace "
-    "professional agricultural diagnosis."
 )
 
 
@@ -1404,3 +1064,4 @@ st.divider()
 st.caption(
     "Smart Plant Disease Detector | AI for Smart Agriculture"
 )
+```
