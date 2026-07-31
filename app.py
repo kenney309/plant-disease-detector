@@ -2,13 +2,14 @@ import streamlit as st
 import json
 import hashlib
 import os
+import time
 from datetime import datetime
 
 
-# ---------------- APP SETTINGS ----------------
+# ---------------- PAGE SETTINGS ----------------
 
 st.set_page_config(
-    page_title="Smart Plant Disease Detector",
+    page_title="Smart Plant AI",
     page_icon="🌱",
     layout="wide"
 )
@@ -17,21 +18,24 @@ st.set_page_config(
 USER_FILE = "users.json"
 
 
-# ---------------- DATABASE ----------------
+# ---------------- CREATE DATABASE ----------------
 
 if not os.path.exists(USER_FILE):
-    with open(USER_FILE, "w") as f:
-        json.dump({}, f)
+    with open(USER_FILE, "w") as file:
+        json.dump({}, file)
+
 
 
 def load_users():
-    with open(USER_FILE, "r") as f:
-        return json.load(f)
+    with open(USER_FILE, "r") as file:
+        return json.load(file)
+
 
 
 def save_users(users):
-    with open(USER_FILE, "w") as f:
-        json.dump(users, f, indent=4)
+    with open(USER_FILE, "w") as file:
+        json.dump(users, file, indent=4)
+
 
 
 def hash_password(password):
@@ -40,9 +44,11 @@ def hash_password(password):
     ).hexdigest()
 
 
-# ---------------- AUTHENTICATION ----------------
 
-def register(username, password):
+# ---------------- ACCOUNT FUNCTIONS ----------------
+
+
+def register_user(username, password):
 
     users = load_users()
 
@@ -51,7 +57,7 @@ def register(username, password):
 
     users[username] = {
         "password": hash_password(password),
-        "history": []
+        "reports": []
     }
 
     save_users(users)
@@ -60,7 +66,7 @@ def register(username, password):
 
 
 
-def login(username, password):
+def login_user(username,password):
 
     users = load_users()
 
@@ -75,32 +81,41 @@ def login(username, password):
 
 # ---------------- SESSION ----------------
 
-if "logged" not in st.session_state:
-    st.session_state.logged = False
+
+if "logged_in" not in st.session_state:
+    st.session_state.logged_in = False
+
 
 if "username" not in st.session_state:
     st.session_state.username = ""
 
 
 
-# ---------------- LOGIN / REGISTER ----------------
+# ---------------- LOGIN SYSTEM ----------------
 
 
-if not st.session_state.logged:
+if not st.session_state.logged_in:
 
 
-    st.title("🌱 Smart Plant Disease Detector")
+    st.title("🌱 Smart Plant AI")
 
-    choice = st.selectbox(
-        "Select action",
-        [
-            "Login",
-            "Register"
-        ]
+    st.subheader(
+        "AI Powered Plant Disease Detection System"
     )
 
 
-    if choice == "Register":
+    option = st.radio(
+        "Select option",
+        [
+            "Login",
+            "Register"
+        ],
+        horizontal=True
+    )
+
+
+    if option == "Register":
+
 
         st.header("Create Account")
 
@@ -109,18 +124,20 @@ if not st.session_state.logged:
             "Username"
         )
 
+
         password = st.text_input(
             "Password",
             type="password"
         )
 
 
-        if st.button("Create Account"):
+        if st.button("Register"):
 
-            if register(username,password):
+
+            if register_user(username,password):
 
                 st.success(
-                    "Account created successfully. Login now."
+                    "Account created. Login now."
                 )
 
             else:
@@ -133,12 +150,14 @@ if not st.session_state.logged:
 
     else:
 
+
         st.header("Login")
 
 
         username = st.text_input(
             "Username"
         )
+
 
         password = st.text_input(
             "Password",
@@ -148,9 +167,10 @@ if not st.session_state.logged:
 
         if st.button("Login"):
 
-            if login(username,password):
 
-                st.session_state.logged = True
+            if login_user(username,password):
+
+                st.session_state.logged_in = True
                 st.session_state.username = username
 
                 st.rerun()
@@ -158,7 +178,7 @@ if not st.session_state.logged:
             else:
 
                 st.error(
-                    "Incorrect login details"
+                    "Incorrect username or password"
                 )
 
 
@@ -170,56 +190,94 @@ else:
 
 
     st.sidebar.title(
-        "Navigation"
+        "🌿 Smart Plant AI"
     )
 
 
-    page = st.sidebar.radio(
-        "Go to",
+    page = st.sidebar.selectbox(
+        "Navigation",
         [
             "Dashboard",
-            "Disease Detector",
-            "History",
-            "Settings"
+            "Detect Disease",
+            "My Reports",
+            "About"
         ]
     )
 
 
     st.sidebar.success(
-        f"User: {st.session_state.username}"
+        "User: " + st.session_state.username
     )
 
 
 
+    # Dashboard
+
     if page == "Dashboard":
-
-        st.title("🌿 Dashboard")
-
-        st.write(
-            "Welcome to your Smart Plant Disease Detector."
-        )
-
-
-        st.info(
-            "Upload plant leaves and get AI-powered disease analysis."
-        )
-
-
-
-    elif page == "Disease Detector":
 
 
         st.title(
-            "🌱 Plant Disease Detection"
+            "🌱 Dashboard"
+        )
+
+
+        col1,col2,col3 = st.columns(3)
+
+
+        with col1:
+            st.metric(
+                "System",
+                "Online"
+            )
+
+
+        with col2:
+            st.metric(
+                "AI",
+                "Ready"
+            )
+
+
+        with col3:
+            st.metric(
+                "Reports",
+                "0"
+            )
+
+
+        st.divider()
+
+
+        st.info(
+            """
+            Upload a plant leaf image to receive:
+            
+            • Disease detection
+            • Confidence score
+            • Treatment advice
+            • Prevention methods
+            """
+        )
+
+
+
+    # Detector
+
+
+    elif page == "Detect Disease":
+
+
+        st.title(
+            "🔍 Plant Disease Detector"
         )
 
 
         image = st.file_uploader(
-            "Upload plant leaf image",
+            "Upload leaf image",
             type=[
-                "png",
                 "jpg",
-                "jpeg"
+                "jpeg",
+                "png"
             ]
         )
 
@@ -234,82 +292,71 @@ else:
             )
 
 
-            st.warning(
-                "AI model will be connected here next."
-            )
+            if st.button(
+                "Analyze Image"
+            ):
 
 
-            prediction = {
-                "date": str(datetime.now()),
-                "result": "Pending AI Model"
-            }
+                progress = st.progress(0)
 
 
-            users = load_users()
+                for i in range(100):
 
-
-            users[
-                st.session_state.username
-            ]["history"].append(prediction)
-
-
-            save_users(users)
+                    time.sleep(0.01)
+                    progress.progress(i+1)
 
 
 
-
-    elif page == "History":
-
-
-        st.title(
-            "📄 Prediction History"
-        )
-
-
-        users = load_users()
-
-
-        history = users[
-            st.session_state.username
-        ]["history"]
-
-
-        if history:
-
-            for item in history:
-
-                st.write(
-                    item
+                st.success(
+                    "Analysis completed"
                 )
 
 
-        else:
-
-            st.info(
-                "No predictions yet."
-            )
+                st.warning(
+                    "AI model will be connected next."
+                )
 
 
 
-    elif page == "Settings":
+    # Reports
+
+
+    elif page == "My Reports":
 
 
         st.title(
-            "⚙ Settings"
+            "📄 My Reports"
         )
 
 
-        st.write(
-            "Future features:"
+        st.info(
+            "Your previous plant analysis reports will appear here."
         )
+
+
+
+    # About
+
+
+    elif page == "About":
+
+
+        st.title(
+            "About Smart Plant AI"
+        )
+
 
         st.write(
             """
-            - Google Login
-            - Face ID / Fingerprint
-            - Notifications
-            - Offline Mode
-            - Advanced Analytics
+            Smart Plant AI is an intelligent agriculture
+            assistant designed to help identify plant diseases.
+            
+            Future features:
+            - Real AI diagnosis
+            - Treatment recommendations
+            - PDF reports
+            - Disease history
+            - Analytics
             """
         )
 
@@ -317,7 +364,7 @@ else:
 
     if st.sidebar.button("Logout"):
 
-        st.session_state.logged = False
+        st.session_state.logged_in = False
         st.session_state.username = ""
 
         st.rerun()
