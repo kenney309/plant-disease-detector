@@ -2,93 +2,108 @@ import streamlit as st
 import json
 import hashlib
 import os
+from datetime import datetime
 
-# App settings
+
+# ---------------- APP SETTINGS ----------------
+
 st.set_page_config(
     page_title="Smart Plant Disease Detector",
     page_icon="🌱",
-    layout="centered"
+    layout="wide"
 )
+
 
 USER_FILE = "users.json"
 
 
-# Create users file if missing
+# ---------------- DATABASE ----------------
+
 if not os.path.exists(USER_FILE):
     with open(USER_FILE, "w") as f:
         json.dump({}, f)
 
 
-# Password encryption
-def encrypt_password(password):
-    return hashlib.sha256(password.encode()).hexdigest()
-
-
-# Load users
-def get_users():
+def load_users():
     with open(USER_FILE, "r") as f:
         return json.load(f)
 
 
-# Save users
 def save_users(users):
     with open(USER_FILE, "w") as f:
         json.dump(users, f, indent=4)
 
 
-# Register
-def register_user(username, password):
+def hash_password(password):
+    return hashlib.sha256(
+        password.encode()
+    ).hexdigest()
 
-    users = get_users()
+
+# ---------------- AUTHENTICATION ----------------
+
+def register(username, password):
+
+    users = load_users()
 
     if username in users:
         return False
 
-    users[username] = encrypt_password(password)
+    users[username] = {
+        "password": hash_password(password),
+        "history": []
+    }
 
     save_users(users)
 
     return True
 
 
-# Login
-def check_login(username, password):
 
-    users = get_users()
+def login(username, password):
+
+    users = load_users()
 
     if username in users:
 
-        if users[username] == encrypt_password(password):
+        if users[username]["password"] == hash_password(password):
             return True
 
     return False
 
 
 
-# Session
-if "login" not in st.session_state:
-    st.session_state.login = False
+# ---------------- SESSION ----------------
 
-if "user" not in st.session_state:
-    st.session_state.user = ""
+if "logged" not in st.session_state:
+    st.session_state.logged = False
+
+if "username" not in st.session_state:
+    st.session_state.username = ""
 
 
 
-# Login/Register page
-if not st.session_state.login:
+# ---------------- LOGIN / REGISTER ----------------
+
+
+if not st.session_state.logged:
 
 
     st.title("🌱 Smart Plant Disease Detector")
 
-    option = st.radio(
-        "Select option",
-        ["Login", "Register"]
+    choice = st.selectbox(
+        "Select action",
+        [
+            "Login",
+            "Register"
+        ]
     )
 
 
-    if option == "Register":
+    if choice == "Register":
 
-        st.subheader("Create Account")
+        st.header("Create Account")
+
 
         username = st.text_input(
             "Username"
@@ -100,33 +115,26 @@ if not st.session_state.login:
         )
 
 
-        if st.button("Register"):
+        if st.button("Create Account"):
 
-            if username and password:
+            if register(username,password):
 
-                if register_user(username,password):
-
-                    st.success(
-                        "Account created. You can now login."
-                    )
-
-                else:
-
-                    st.error(
-                        "Username already exists."
-                    )
+                st.success(
+                    "Account created successfully. Login now."
+                )
 
             else:
 
-                st.warning(
-                    "Fill all fields."
+                st.error(
+                    "Username already exists."
                 )
 
 
 
     else:
 
-        st.subheader("Login")
+        st.header("Login")
+
 
         username = st.text_input(
             "Username"
@@ -140,57 +148,176 @@ if not st.session_state.login:
 
         if st.button("Login"):
 
-            if check_login(username,password):
+            if login(username,password):
 
-                st.session_state.login = True
-                st.session_state.user = username
+                st.session_state.logged = True
+                st.session_state.username = username
 
                 st.rerun()
 
             else:
 
                 st.error(
-                    "Invalid username or password."
+                    "Incorrect login details"
                 )
 
 
 
-# Main application
+# ---------------- MAIN APP ----------------
+
+
 else:
 
-    st.title("🌿 AI Plant Disease Detector")
 
-    st.success(
-        f"Welcome {st.session_state.user}"
+    st.sidebar.title(
+        "Navigation"
     )
 
 
-    uploaded = st.file_uploader(
-        "Upload plant leaf image",
-        type=[
-            "jpg",
-            "jpeg",
-            "png"
+    page = st.sidebar.radio(
+        "Go to",
+        [
+            "Dashboard",
+            "Disease Detector",
+            "History",
+            "Settings"
         ]
     )
 
 
-    if uploaded:
+    st.sidebar.success(
+        f"User: {st.session_state.username}"
+    )
 
-        st.image(
-            uploaded,
-            caption="Uploaded Leaf",
-            use_container_width=True
+
+
+    if page == "Dashboard":
+
+        st.title("🌿 Dashboard")
+
+        st.write(
+            "Welcome to your Smart Plant Disease Detector."
         )
+
 
         st.info(
-            "AI prediction system will be connected here."
+            "Upload plant leaves and get AI-powered disease analysis."
         )
 
 
-    if st.button("Logout"):
 
-        st.session_state.login = False
-        st.session_state.user = ""
+    elif page == "Disease Detector":
+
+
+        st.title(
+            "🌱 Plant Disease Detection"
+        )
+
+
+        image = st.file_uploader(
+            "Upload plant leaf image",
+            type=[
+                "png",
+                "jpg",
+                "jpeg"
+            ]
+        )
+
+
+        if image:
+
+
+            st.image(
+                image,
+                caption="Uploaded Leaf",
+                use_container_width=True
+            )
+
+
+            st.warning(
+                "AI model will be connected here next."
+            )
+
+
+            prediction = {
+                "date": str(datetime.now()),
+                "result": "Pending AI Model"
+            }
+
+
+            users = load_users()
+
+
+            users[
+                st.session_state.username
+            ]["history"].append(prediction)
+
+
+            save_users(users)
+
+
+
+
+    elif page == "History":
+
+
+        st.title(
+            "📄 Prediction History"
+        )
+
+
+        users = load_users()
+
+
+        history = users[
+            st.session_state.username
+        ]["history"]
+
+
+        if history:
+
+            for item in history:
+
+                st.write(
+                    item
+                )
+
+
+        else:
+
+            st.info(
+                "No predictions yet."
+            )
+
+
+
+    elif page == "Settings":
+
+
+        st.title(
+            "⚙ Settings"
+        )
+
+
+        st.write(
+            "Future features:"
+        )
+
+        st.write(
+            """
+            - Google Login
+            - Face ID / Fingerprint
+            - Notifications
+            - Offline Mode
+            - Advanced Analytics
+            """
+        )
+
+
+
+    if st.sidebar.button("Logout"):
+
+        st.session_state.logged = False
+        st.session_state.username = ""
 
         st.rerun()
