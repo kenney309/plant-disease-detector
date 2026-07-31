@@ -1,77 +1,249 @@
-st.markdown("""
-<style>
-
-/* Page background */
-[data-testid="stAppViewContainer"] {
-    background-color: #f7f9fc;
-}
-
-
-/* Title */
-.title {
-    text-align: center;
-    font-size: 45px;
-    font-weight: bold;
-    color: #2e7d32;
-}
+import streamlit as st
+from PIL import Image
+import numpy as np
+import tensorflow as tf
+from datetime import datetime
+import os
 
 
-/* Subtitle */
-.subtitle {
-    text-align: center;
-    font-size: 20px;
-    color: #555555;
-}
+# PAGE SETTINGS
+st.set_page_config(
+    page_title="Smart Plant Disease Detector",
+    page_icon="🌿",
+    layout="centered"
+)
 
 
-/* White cards */
-.card {
-    background-color: white;
-    padding: 25px;
-    border-radius: 20px;
-    box-shadow: 0px 4px 15px rgba(0,0,0,0.12);
-    color: #222222;
-}
+# TITLE
+st.title("🌿 Smart Plant Disease Detector")
+st.write("AI-powered plant leaf disease identification system")
 
 
-/* Yellow instruction box */
-.info {
-    background-color: #fff8dc;
-    padding: 25px;
-    border-radius: 20px;
-    color: #222222 !important;
-    box-shadow: 0px 4px 15px rgba(0,0,0,0.10);
-}
+# MODEL LOADING
+MODEL_PATH = "model_float16_quant.tflite"
 
 
-.info b {
-    color: #1b5e20;
-}
+@st.cache_resource
+def load_model():
+    interpreter = tf.lite.Interpreter(model_path=MODEL_PATH)
+    interpreter.allocate_tensors()
+    return interpreter
 
 
-/* Prediction box */
-.result {
-    background-color: #e8f5e9;
-    padding: 25px;
-    border-radius: 20px;
-    border-left: 8px solid #2e7d32;
-    color: #222222;
-}
+try:
+    interpreter = load_model()
+    st.success("AI Model Loaded Successfully")
+except Exception as e:
+    st.error("Model not found. Upload model_float16_quant.tflite")
+    st.stop()
 
 
-/* Text fixing */
-p, span, label, div {
-    color: #222222;
-}
+# CLASS LABELS
+CLASS_NAMES = [
+    "Apple Scab",
+    "Apple Black Rot",
+    "Apple Healthy",
+    "Corn Leaf Blight",
+    "Corn Healthy",
+    "Grape Black Rot",
+    "Grape Healthy",
+    "Potato Early Blight",
+    "Potato Late Blight",
+    "Potato Healthy",
+    "Tomato Early Blight",
+    "Tomato Late Blight",
+    "Tomato Healthy"
+]
 
 
-/* File uploader */
-[data-testid="stFileUploader"] {
-    background-color: white;
-    border-radius: 15px;
-    padding: 10px;
-}
+# RECOMMENDATIONS
+
+def advice(result):
+
+    if "Healthy" in result:
+        return """
+Your plant appears healthy.
+
+Recommendations:
+- Continue proper watering.
+- Maintain sunlight exposure.
+- Monitor regularly for changes.
+"""
+
+    elif "Blight" in result:
+        return """
+Possible blight disease detected.
+
+Actions:
+- Remove infected leaves.
+- Avoid excessive watering.
+- Improve air circulation.
+- Apply recommended fungicide.
+"""
+
+    elif "Scab" in result:
+        return """
+Possible scab disease detected.
+
+Actions:
+- Remove affected leaves.
+- Keep leaves dry.
+- Use suitable fungicide.
+- Monitor plant development.
+"""
+
+    else:
+        return """
+Possible fungal infection detected.
+
+Actions:
+- Separate infected plants.
+- Remove damaged parts.
+- Maintain good farming hygiene.
+"""
 
 
-</style>
-""", unsafe_allow_html=True)
+# IMAGE PREPROCESSING
+
+def prepare_image(image):
+
+    img = image.resize((224,224))
+    img = np.array(img)
+
+    img = img.astype(np.float32) / 255.0
+
+    img = np.expand_dims(img,axis=0)
+
+    return img
+
+
+
+# PREDICTION
+
+def predict(image):
+
+    input_details = interpreter.get_input_details()
+    output_details = interpreter.get_output_details()
+
+    data = prepare_image(image)
+
+    interpreter.set_tensor(
+        input_details[0]['index'],
+        data
+    )
+
+    interpreter.invoke()
+
+    prediction = interpreter.get_tensor(
+        output_details[0]['index']
+    )
+
+    index = np.argmax(prediction)
+
+    confidence = float(np.max(prediction))*100
+
+    if index < len(CLASS_NAMES):
+        disease = CLASS_NAMES[index]
+    else:
+        disease = "Unknown"
+
+
+    return disease, confidence
+
+
+
+# UPLOAD IMAGE
+
+uploaded = st.file_uploader(
+    "Upload a plant leaf image",
+    type=["jpg","jpeg","png"]
+)
+
+
+if uploaded:
+
+    image = Image.open(uploaded)
+
+    st.image(
+        image,
+        caption="Uploaded Leaf",
+        use_container_width=True
+    )
+
+
+    if st.button("🔍 Analyse Plant"):
+
+        with st.spinner("AI analysing image..."):
+
+            disease, confidence = predict(image)
+
+
+        st.subheader("🌿 AI Prediction")
+
+        st.write(
+            "Plant Disease:",
+            disease
+        )
+
+        st.write(
+            "Confidence:",
+            f"{confidence:.2f}%"
+        )
+
+        st.write(
+            "Analysis Time:",
+            datetime.now().strftime("%H:%M:%S")
+        )
+
+
+        if confidence < 60:
+
+            st.warning(
+                "Low confidence. Try uploading a clearer leaf image."
+            )
+
+
+        st.subheader("🌱 Recommended Actions")
+
+        st.info(
+            advice(disease)
+        )
+
+
+        report = f"""
+SMART PLANT DISEASE DETECTOR REPORT
+
+Prediction:
+{disease}
+
+Confidence:
+{confidence:.2f}%
+
+Date:
+{datetime.now()}
+"""
+
+
+        st.download_button(
+            "Download Analysis Report",
+            report,
+            file_name="plant_report.txt"
+        )
+
+
+# ABOUT
+
+st.divider()
+
+st.subheader("About The Project")
+
+st.write(
+"""
+Smart Plant Disease Detector uses Artificial Intelligence
+and image recognition technology to identify possible
+plant diseases from leaf images.
+
+It helps farmers and students understand plant health
+and provides recommended management practices.
+"""
+)
