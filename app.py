@@ -1,4 +1,3 @@
-
 import streamlit as st
 from PIL import Image
 import numpy as np
@@ -7,23 +6,24 @@ import requests
 import os
 from datetime import datetime
 
+
 st.set_page_config(
     page_title="Smart Plant Disease Detector",
     page_icon="🌿",
     layout="centered"
 )
 
-st.title("Smart Plant Disease Detector")
+
+st.title("🌿 Smart Plant Disease Detector")
 
 st.write(
-    "Upload a clear image of a plant leaf. "
-    "The AI will analyze the image and provide a possible prediction."
+    "Upload a plant leaf image and the AI will analyze possible diseases."
 )
 
 st.warning(
-    "AI results are predictions only. "
-    "For important agricultural decisions, confirm the result with an expert."
+    "AI predictions are not a replacement for agricultural experts."
 )
+
 
 MODEL_URL = (
     "https://huggingface.co/animeshakr/"
@@ -31,7 +31,8 @@ MODEL_URL = (
     "model_float16_quant.tflite"
 )
 
-MODEL_PATH = "plant_disease_model.tflite"
+MODEL_PATH = "plant_model.tflite"
+
 
 CLASS_NAMES = [
     "Apple - Apple Scab",
@@ -41,15 +42,15 @@ CLASS_NAMES = [
     "Blueberry - Healthy",
     "Cherry - Powdery Mildew",
     "Cherry - Healthy",
-    "Corn - Cercospora Leaf Spot / Gray Leaf Spot",
+    "Corn - Cercospora Leaf Spot",
     "Corn - Common Rust",
     "Corn - Northern Leaf Blight",
     "Corn - Healthy",
     "Grape - Black Rot",
-    "Grape - Esca (Black Measles)",
+    "Grape - Esca",
     "Grape - Leaf Blight",
     "Grape - Healthy",
-    "Orange - Huanglongbing (Citrus Greening)",
+    "Orange - Huanglongbing",
     "Peach - Bacterial Spot",
     "Peach - Healthy",
     "Pepper - Bacterial Spot",
@@ -74,23 +75,6 @@ CLASS_NAMES = [
     "Tomato - Healthy"
 ]
 
-SUPPORTED_PLANTS = [
-    "Apple",
-    "Blueberry",
-    "Cherry",
-    "Corn",
-    "Grape",
-    "Orange",
-    "Peach",
-    "Pepper",
-    "Potato",
-    "Raspberry",
-    "Soybean",
-    "Squash",
-    "Strawberry",
-    "Tomato"
-]
-
 
 @st.cache_resource
 def load_model():
@@ -99,21 +83,19 @@ def load_model():
 
         with st.spinner("Downloading AI model..."):
 
-            response = requests.get(
+            r = requests.get(
                 MODEL_URL,
                 timeout=300
             )
 
-            response.raise_for_status()
+            r.raise_for_status()
 
             with open(
                 MODEL_PATH,
                 "wb"
-            ) as file:
+            ) as f:
+                f.write(r.content)
 
-                file.write(
-                    response.content
-                )
 
     interpreter = tf.lite.Interpreter(
         model_path=MODEL_PATH
@@ -121,88 +103,81 @@ def load_model():
 
     interpreter.allocate_tensors()
 
-    input_details = interpreter.get_input_details()
-    output_details = interpreter.get_output_details()
-
     return (
         interpreter,
-        input_details,
-        output_details
+        interpreter.get_input_details(),
+        interpreter.get_output_details()
     )
 
 
-def predict_image(image):
+def predict(image):
 
-    (
-        interpreter,
-        input_details,
-        output_details
-    ) = load_model()
+    interpreter, inputs, outputs = load_model()
 
-    input_shape = input_details[0]["shape"]
+    size = inputs[0]["shape"]
 
-    height = int(input_shape[1])
-    width = int(input_shape[2])
-
-    image = image.resize(
-        (width, height)
+    img = image.resize(
+        (
+            size[2],
+            size[1]
+        )
     )
 
-    image_array = np.array(
-        image,
-        dtype=np.float32
+
+    img = np.array(img).astype(
+        np.float32
     )
 
-    image_array = image_array / 255.0
 
-    image_array = np.expand_dims(
-        image_array,
+    img = img / 255.0
+
+
+    img = np.expand_dims(
+        img,
         axis=0
     )
 
+
     interpreter.set_tensor(
-        input_details[0]["index"],
-        image_array
+        inputs[0]["index"],
+        img
     )
 
     interpreter.invoke()
 
-    output = interpreter.get_tensor(
-        output_details[0]["index"]
-    )
 
-    predictions = output[0]
-
-    predicted_index = int(
-        np.argmax(predictions)
-    )
-
-    confidence = float(
-        predictions[predicted_index]
-    )
-
-    if predicted_index < len(CLASS_NAMES):
-
-        prediction = CLASS_NAMES[
-            predicted_index
-        ]
-
-    else:
-
-        prediction = "Unknown"
-
-    return prediction, confidence
+    result = interpreter.get_tensor(
+        outputs[0]["index"]
+    )[0]
 
 
-st.divider()
+    probabilities = tf.nn.softmax(
+        result
+    ).numpy()
 
-selected_plant = st.selectbox(
-    "Select the plant you are analyzing",
-    SUPPORTED_PLANTS
-)
 
-uploaded_file = st.file_uploader(
-    "Upload a plant leaf image",
+    indexes = probabilities.argsort()[-3:][::-1]
+
+
+    predictions=[]
+
+
+    for i in indexes:
+
+        predictions.append(
+            (
+                CLASS_NAMES[i],
+                probabilities[i]
+            )
+        )
+
+
+    return predictions
+
+
+
+uploaded = st.file_uploader(
+    "Upload leaf image",
     type=[
         "jpg",
         "jpeg",
@@ -210,40 +185,38 @@ uploaded_file = st.file_uploader(
     ]
 )
 
-if uploaded_file is not None:
+
+if uploaded:
+
 
     image = Image.open(
-        uploaded_file
+        uploaded
     ).convert("RGB")
+
 
     st.image(
         image,
-        caption="Uploaded Plant Leaf",
+        caption="Uploaded Leaf",
         use_container_width=True
     )
 
+
     if st.button(
-        "ANALYZE LEAF",
-        use_container_width=True
+        "ANALYZE LEAF"
     ):
+
 
         try:
 
             with st.spinner(
-                "AI is analyzing the leaf..."
+                "AI analysing..."
             ):
 
-                prediction, confidence = predict_image(
+
+                results = predict(
                     image
                 )
 
-            predicted_plant = prediction.split(
-                " - "
-            )[0]
-
-            analysis_time = datetime.now().strftime(
-                "%Y-%m-%d %H:%M:%S"
-            )
 
             st.divider()
 
@@ -251,165 +224,99 @@ if uploaded_file is not None:
                 "AI Prediction"
             )
 
-            st.write(
-                "Plant Selected: "
-                + selected_plant
-            )
+
+            best = results[0]
+
 
             st.write(
-                "Prediction: "
-                + prediction
+                "Prediction:",
+                best[0]
             )
+
 
             st.write(
-                "Confidence: "
-                + f"{confidence * 100:.2f}%"
+                "Confidence:",
+                f"{best[1]*100:.2f}%"
             )
+
 
             st.write(
-                "Analysis Time: "
-                + analysis_time
+                "Analysis Time:",
+                datetime.now()
             )
 
-            if predicted_plant != selected_plant:
 
-                st.error(
-                    "PLANT MISMATCH"
-                )
+            st.subheader(
+                "Top 3 Results"
+            )
 
-                st.write(
-                    "The AI predicted "
-                    + predicted_plant
-                    + " but you selected "
-                    + selected_plant
-                    + "."
-                )
+
+            for name,score in results:
 
                 st.write(
-                    "This result may be incorrect. "
-                    "Try another clear image."
+                    f"{name} : {score*100:.2f}%"
                 )
 
-            elif confidence < 0.40:
 
-                st.warning(
-                    "LOW CONFIDENCE"
-                )
-
-                st.write(
-                    "The AI is not confident about this prediction."
-                )
-
-                st.write(
-                    "Try taking another clear photograph "
-                    "with good lighting."
-                )
-
-            elif "Healthy" in prediction:
+            if "Healthy" in best[0]:
 
                 st.success(
-                    "The AI predicts that the plant may be healthy."
-                )
-
-                st.write(
-                    "Continue monitoring the plant regularly."
+                    "The plant appears healthy."
                 )
 
             else:
 
                 st.error(
-                    "POSSIBLE DISEASE DETECTED"
+                    "Possible disease detected."
                 )
 
-                st.write(
-                    "The AI has detected a possible "
-                    + prediction
-                    + " condition."
-                )
 
                 st.subheader(
-                    "Recommended Actions"
+                    "Recommendations"
                 )
+
 
                 st.write(
-                    "Inspect other leaves on the same plant."
+                    """
+                    - Remove severely affected leaves.
+                    - Keep the farm area clean.
+                    - Avoid excessive leaf wetness.
+                    - Monitor nearby plants.
+                    - Seek expert confirmation before treatment.
+                    """
                 )
 
-                st.write(
-                    "Check nearby plants for similar symptoms."
-                )
 
-                st.write(
-                    "Remove severely affected plant material "
-                    "where appropriate."
-                )
-
-                st.write(
-                    "Keep the growing area clean."
-                )
-
-                st.write(
-                    "Improve air circulation around the plant."
-                )
-
-                st.write(
-                    "Avoid unnecessary wetting of leaves."
-                )
-
-                st.write(
-                    "Monitor new leaves for additional symptoms."
-                )
-
-                st.write(
-                    "Consult an agricultural expert for confirmation."
-                )
-
-                st.warning(
-                    "Confirm the diagnosis before applying "
-                    "any chemical treatment."
-                )
-
-        except Exception as error:
+        except Exception as e:
 
             st.error(
-                "An error occurred while analyzing the image."
+                "Prediction failed"
             )
 
             st.code(
-                str(error)
+                str(e)
             )
+
 
 else:
 
     st.info(
-        "Upload a clear plant leaf image to begin."
+        "Upload a leaf image to start."
     )
 
 
 st.divider()
 
+
 st.subheader(
     "About the Project"
 )
 
-st.write(
-    "The Smart Plant Disease Detector is an Artificial "
-    "Intelligence project designed to support smart agriculture."
-)
 
 st.write(
-    "The system analyzes images of plant leaves and provides "
-    "possible disease predictions, confidence scores and "
-    "general recommendations."
+    """
+    Smart Plant Disease Detector is an AI-based agriculture
+    project that analyzes plant leaf images and provides
+    possible disease predictions.
+    """
 )
-
-st.write(
-    "The system is designed as a supporting tool and should "
-    "not replace professional agricultural diagnosis."
-)
-
-st.caption(
-    "Smart Plant Disease Detector | AI for Smart Agriculture"
-)
-
-
