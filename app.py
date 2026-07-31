@@ -1,85 +1,67 @@
-import streamlit as st
-
 st.markdown("""
 <style>
 
 .stApp {
-    background: linear-gradient(
-        120deg,
-        #d8f3dc,
-        #ffffff,
-        #b7e4c7
-    );
+    background:#f7faf7;
 }
 
 
-/* Main title */
-
-.big-title {
+.header {
+    background:#166534;
+    padding:35px;
+    border-radius:0 0 25px 25px;
     text-align:center;
-    font-size:55px;
-    font-weight:800;
-    color:#14532d;
-    margin-top:30px;
+    color:white;
 }
 
 
-.tagline {
-    text-align:center;
-    font-size:20px;
-    color:#374151;
-    margin-bottom:30px;
+.header h1 {
+    font-size:42px;
+    margin-bottom:5px;
+}
+
+
+.header p {
+    font-size:18px;
 }
 
 
 
-/* Login card */
-
-.login-card {
+.login-box {
 
     background:white;
-    padding:40px;
-    border-radius:25px;
-    box-shadow:
-    0 10px 30px rgba(0,0,0,0.15);
+    padding:35px;
+    border-radius:18px;
+    box-shadow:0 8px 25px rgba(0,0,0,0.08);
 
 }
 
 
 
-/* Feature cards */
+.info-card {
 
-.feature {
-
-    background:#ffffff;
-    padding:20px;
+    background:#ecfdf5;
+    padding:18px;
     border-radius:15px;
-    text-align:center;
-    box-shadow:
-    0 5px 15px rgba(0,0,0,0.08);
-
-    font-size:17px;
+    margin-top:15px;
 
 }
 
 
 
-div.stButton > button {
+.stButton button {
 
-    background:#2d6a4f;
+    background:#166534;
     color:white;
-    border-radius:12px;
+    border-radius:10px;
     height:45px;
-    font-size:17px;
-    border:none;
 
 }
 
 
-div.stButton > button:hover {
+.stButton button:hover {
 
-    background:#40916c;
-    color:white;
+    background:#15803d;
 
 }
 
@@ -92,12 +74,14 @@ unsafe_allow_html=True)
 
 st.markdown(
 """
-<div class="big-title">
-🌱 Smart Plant AI
-</div>
+<div class="header">
 
-<div class="tagline">
-Intelligent Plant Disease Detection & Smart Farming Assistant
+<h1>🌱 Smart Plant AI</h1>
+
+<p>
+Your intelligent assistant for plant health monitoring
+</p>
+
 </div>
 """,
 unsafe_allow_html=True
@@ -105,98 +89,82 @@ unsafe_allow_html=True
 
 
 
-# Feature row
-
-c1,c2,c3 = st.columns(3)
-
-
-with c1:
-    st.markdown(
-    """
-    <div class="feature">
-    🌿<br>
-    AI Disease Detection
-    </div>
-    """,
-    unsafe_allow_html=True
-    )
-
-
-with c2:
-    st.markdown(
-    """
-    <div class="feature">
-    📊<br>
-    Health Reports
-    </div>
-    """,
-    unsafe_allow_html=True
-    )
-
-
-with c3:
-    st.markdown(
-    """
-    <div class="feature">
-    🌾<br>
-    Farming Advice
-    </div>
-    """,
-    unsafe_allow_html=True
-    )
-
-
-
 st.write("")
 
 
 
-# Login/Register card
-
-st.markdown(
-"<div class='login-card'>",
-unsafe_allow_html=True
+left,right = st.columns(
+    [1,1]
 )
 
 
-choice = st.radio(
-"",
-[
-"🔐 Login",
-"📝 Register"
-],
-horizontal=True
-)
 
+with left:
 
-username = st.text_input(
-"Username"
-)
+    st.markdown(
+    """
+    <div class="info-card">
 
+    🌿 AI Plant Diagnosis  
+    <br><br>
+    📷 Leaf Image Analysis  
+    <br><br>
+    📄 Digital Reports  
+    <br><br>
+    🌾 Smart Farming Advice
 
-password = st.text_input(
-"Password",
-type="password"
-)
-
-
-if choice=="📝 Register":
-
-    st.button(
-        "Create Account",
-        use_container_width=True
+    </div>
+    """,
+    unsafe_allow_html=True
     )
 
 
-else:
 
-    st.button(
-        "Login",
-        use_container_width=True
+with right:
+
+    st.markdown(
+    "<div class='login-box'>",
+    unsafe_allow_html=True
     )
 
 
-st.markdown(
-"</div>",
-unsafe_allow_html=True
-)
+    option = st.radio(
+        "",
+        [
+            "Login",
+            "Register"
+        ],
+        horizontal=True
+    )
+
+
+    username = st.text_input(
+        "Username"
+    )
+
+
+    password = st.text_input(
+        "Password",
+        type="password"
+    )
+
+
+    if option=="Register":
+
+        st.button(
+            "Create Account",
+            use_container_width=True
+        )
+
+    else:
+
+        st.button(
+            "Login",
+            use_container_width=True
+        )
+
+
+    st.markdown(
+    "</div>",
+    unsafe_allow_html=True
+    )
