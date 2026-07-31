@@ -1,72 +1,75 @@
 st.markdown("""
 <style>
 
-body {
-    background-color:#f5f7fb;
+/* Page background */
+[data-testid="stAppViewContainer"] {
+    background-color: #f7f9fc;
 }
 
 
-/* Main title */
+/* Title */
 .title {
-    text-align:center;
-    font-size:45px;
-    font-weight:800;
-    color:#2e7d32;
+    text-align: center;
+    font-size: 45px;
+    font-weight: bold;
+    color: #2e7d32;
 }
 
 
+/* Subtitle */
 .subtitle {
-    text-align:center;
-    font-size:20px;
-    color:#444;
+    text-align: center;
+    font-size: 20px;
+    color: #555555;
 }
 
 
-/* Cards */
+/* White cards */
 .card {
-    background:white;
-    padding:25px;
-    border-radius:18px;
-    box-shadow:0 5px 15px rgba(0,0,0,0.15);
-    color:#222;
+    background-color: white;
+    padding: 25px;
+    border-radius: 20px;
+    box-shadow: 0px 4px 15px rgba(0,0,0,0.12);
+    color: #222222;
 }
 
 
-/* Instruction box */
+/* Yellow instruction box */
 .info {
-    background:#fff8dc;
-    padding:25px;
-    border-radius:18px;
-    color:#222 !important;
-    font-size:18px;
-    box-shadow:0 5px 15px rgba(0,0,0,0.1);
+    background-color: #fff8dc;
+    padding: 25px;
+    border-radius: 20px;
+    color: #222222 !important;
+    box-shadow: 0px 4px 15px rgba(0,0,0,0.10);
 }
 
 
 .info b {
-    color:#1b5e20;
+    color: #1b5e20;
 }
 
 
-/* Result */
+/* Prediction box */
 .result {
-    background:#e8f5e9;
-    padding:25px;
-    border-radius:18px;
-    border-left:8px solid #2e7d32;
-    color:#222;
+    background-color: #e8f5e9;
+    padding: 25px;
+    border-radius: 20px;
+    border-left: 8px solid #2e7d32;
+    color: #222222;
 }
 
 
-/* Headers */
-h1,h2,h3 {
-    color:#1b5e20;
+/* Text fixing */
+p, span, label, div {
+    color: #222222;
 }
 
 
-/* Normal text */
-p, label {
-    color:#222 !important;
+/* File uploader */
+[data-testid="stFileUploader"] {
+    background-color: white;
+    border-radius: 15px;
+    padding: 10px;
 }
 
 
