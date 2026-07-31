@@ -1,219 +1,224 @@
 import streamlit as st
-from datetime import datetime
+from PIL import Image
+import numpy as np
+import tensorflow as tf
+import requests
+import os
+import time
+from io import BytesIO
 
-# Page setup
+
 st.set_page_config(
     page_title="Smart Plant Disease Detector",
     page_icon="🌿",
-    layout="wide"
+    layout="centered"
 )
 
-# ---------- CSS DESIGN ----------
-st.markdown("""
-<style>
 
-/* Background */
-.stApp {
-    background: #f4f8f4;
-}
+MODEL_URL = "https://huggingface.co/animeshakr/plant-disease-efficientnetv2s/resolve/main/model_float16_quant.tflite"
 
-/* Header */
-.header {
-    background: linear-gradient(135deg,#2d6a4f,#40916c);
-    padding: 35px;
-    border-radius: 0px 0px 25px 25px;
-    text-align:center;
-    color:white;
-}
-
-.header h1 {
-    color:white !important;
-    font-size:38px;
-}
-
-/* Cards */
-.card {
-    background:white;
-    padding:30px;
-    border-radius:25px;
-    box-shadow:0px 5px 20px rgba(0,0,0,0.12);
-}
+MODEL_FILE = "plant_model.tflite"
 
 
-/* Text */
-h1,h2,h3,h4,p,label {
-    color:#1b4332 !important;
-}
+CLASS_NAMES = [
+    "Apple Scab",
+    "Apple Black Rot",
+    "Apple Cedar Rust",
+    "Apple Healthy",
+    "Corn Leaf Blight",
+    "Corn Common Rust",
+    "Corn Healthy",
+    "Grape Black Rot",
+    "Grape Healthy",
+    "Potato Early Blight",
+    "Potato Late Blight",
+    "Potato Healthy",
+    "Tomato Early Blight",
+    "Tomato Late Blight",
+    "Tomato Leaf Mold",
+    "Tomato Healthy"
+]
 
 
-/* Features */
-.feature {
-    font-size:18px;
-    color:#333333;
-    padding:15px;
+RECOMMENDATIONS = {
+    "Apple Scab": "Remove infected leaves, improve air circulation and apply suitable fungicide.",
+    "Apple Black Rot": "Remove damaged parts and use proper disease control methods.",
+    "Corn Leaf Blight": "Use resistant varieties and avoid excessive moisture.",
+    "Corn Common Rust": "Apply recommended fungicides and monitor crop health.",
+    "Grape Black Rot": "Remove infected fruits and maintain field hygiene.",
+    "Potato Early Blight": "Remove infected leaves and use crop rotation.",
+    "Potato Late Blight": "Apply fungicide and avoid water staying on leaves.",
+    "Tomato Early Blight": "Remove infected leaves and improve plant spacing.",
+    "Tomato Late Blight": "Destroy infected plants and apply treatment.",
+    "Healthy": "Your plant appears healthy. Continue proper care."
 }
 
 
-/* Inputs */
-input {
-    background:white !important;
-    color:black !important;
-    border:2px solid #40916c !important;
-    border-radius:12px !important;
-    padding:12px !important;
-}
+def download_model():
 
+    if not os.path.exists(MODEL_FILE):
 
-/* Buttons */
-.stButton button {
+        response = requests.get(MODEL_URL)
 
-    background:#2d6a4f !important;
-    color:white !important;
-    border-radius:12px !important;
-    padding:10px 25px !important;
-    border:none !important;
+        with open(MODEL_FILE, "wb") as f:
+            f.write(response.content)
 
-}
-
-
-.stButton button:hover {
-
-    background:#1b4332 !important;
-
-}
-
-
-/* Radio */
-.stRadio label {
-    color:#1b4332 !important;
-}
-
-</style>
-""", unsafe_allow_html=True)
-
-
-# ---------- HEADER ----------
-st.markdown("""
-<div class="header">
-
-<h1>🌿 Smart Plant Disease Detector</h1>
-
-<p style="color:white !important;">
-AI Powered Crop Disease Identification System
-</p>
-
-</div>
-""", unsafe_allow_html=True)
+    return MODEL_FILE
 
 
 
-# ---------- MAIN AREA ----------
+@st.cache_resource
+def load_model():
 
-left,right = st.columns([1,1])
+    model_path = download_model()
 
+    interpreter = tf.lite.Interpreter(model_path=model_path)
 
-# LEFT SIDE
-with left:
+    interpreter.allocate_tensors()
 
-    st.markdown('<div class="card">', unsafe_allow_html=True)
-
-    st.subheader("🌱 AI Plant Diagnosis")
-
-    st.markdown("""
-    <div class="feature">
-    🌿 Detect plant diseases using Artificial Intelligence
-    </div>
-
-    <div class="feature">
-    📷 Upload leaf images for analysis
-    </div>
-
-    <div class="feature">
-    📊 Generate smart disease reports
-    </div>
-
-    <div class="feature">
-    💡 Get treatment recommendations
-    </div>
-    """, unsafe_allow_html=True)
-
-
-    st.markdown("</div>",unsafe_allow_html=True)
+    return interpreter
 
 
 
-# RIGHT SIDE LOGIN
-with right:
+def predict(image):
 
-    st.markdown('<div class="card">', unsafe_allow_html=True)
+    interpreter = load_model()
 
-    st.subheader("Account")
+    input_details = interpreter.get_input_details()
+    output_details = interpreter.get_output_details()
 
-    option = st.radio(
-        "",
-        ["Login","Register"],
-        horizontal=True
+
+    img = image.resize((224,224))
+
+    img = np.array(img)
+
+    img = img.astype(np.float32)/255.0
+
+    img = np.expand_dims(img, axis=0)
+
+
+    interpreter.set_tensor(
+        input_details[0]["index"],
+        img
+    )
+
+    interpreter.invoke()
+
+
+    output = interpreter.get_tensor(
+        output_details[0]["index"]
     )
 
 
-    if option=="Login":
+    prediction = np.argmax(output)
 
-        username = st.text_input(
-            "Username"
-        )
-
-        password = st.text_input(
-            "Password",
-            type="password"
-        )
+    confidence = float(np.max(output))*100
 
 
-        if st.button("Login"):
-
-            if username and password:
-
-                st.success("Login successful")
-
-            else:
-
-                st.warning("Enter username and password")
-
-
+    if prediction < len(CLASS_NAMES):
+        result = CLASS_NAMES[prediction]
     else:
+        result = "Unknown Plant"
 
-        username = st.text_input(
-            "Create Username"
+
+    return result, confidence
+
+
+
+st.title("🌿 Smart Plant Disease Detector")
+
+st.write(
+    "Upload a plant leaf image and the AI model will analyse possible diseases."
+)
+
+
+uploaded_file = st.file_uploader(
+    "Upload Leaf Image",
+    type=["jpg","jpeg","png"]
+)
+
+
+
+if uploaded_file:
+
+
+    image = Image.open(uploaded_file)
+
+
+    st.image(
+        image,
+        caption="Uploaded Leaf",
+        use_container_width=True
+    )
+
+
+    if st.button("Analyze Plant"):
+
+
+        start = time.time()
+
+
+        with st.spinner("AI is analysing the leaf..."):
+
+            disease, confidence = predict(image)
+
+
+
+        duration = round(time.time()-start,2)
+
+
+        st.success("Analysis Complete")
+
+
+        st.subheader("🌿 AI Prediction")
+
+
+        st.write("Plant Diagnosis:", disease)
+
+        st.write(
+            "Confidence:",
+            f"{confidence:.2f}%"
         )
 
-        password = st.text_input(
-            "Create Password",
-            type="password"
+
+        st.write(
+            "Analysis Time:",
+            f"{duration} seconds"
         )
 
 
-        if st.button("Register"):
+        if confidence < 60:
 
-            if username and password:
-
-                st.success("Account created successfully")
-
-            else:
-
-                st.warning("Fill all fields")
+            st.warning(
+                "Low confidence. Try uploading a clearer leaf image."
+            )
 
 
-
-    st.markdown("</div>",unsafe_allow_html=True)
-
+        st.subheader("Recommended Action")
 
 
-# FOOTER
+        advice = RECOMMENDATIONS.get(
+            disease,
+            "Monitor the plant and consult an agricultural expert."
+        )
 
-st.markdown("""
-<br>
-<center>
-<p style="color:#555;">
-Smart Plant Disease Detector © 2026
-</p>
-</center>
-""",unsafe_allow_html=True)
+
+        st.info(advice)
+
+
+
+st.divider()
+
+
+st.subheader("About The Project")
+
+st.write(
+"""
+Smart Plant Disease Detector is an AI-powered application
+that helps farmers and students identify possible plant diseases
+using image recognition technology.
+
+The system analyses leaf images and provides a prediction together
+with basic recommended actions.
+"""
+)
