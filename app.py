@@ -1,6 +1,4 @@
 import streamlit as st
-from PIL import Image
-import requests
 import json
 import hashlib
 import os
@@ -14,28 +12,74 @@ st.set_page_config(
 )
 
 
-USER_FILE = "users.json"
+# ---------- DESIGN ----------
+
+st.markdown("""
+<style>
+
+.stApp{
+    background: linear-gradient(
+        135deg,
+        #e8f5e9,
+        #ffffff
+    );
+}
+
+.main-title{
+    color:#1b5e20;
+    text-align:center;
+    font-size:45px;
+    font-weight:bold;
+}
+
+.subtitle{
+    text-align:center;
+    color:#555;
+    font-size:18px;
+}
+
+.card{
+    background:white;
+    padding:25px;
+    border-radius:20px;
+    box-shadow:0 4px 15px rgba(0,0,0,0.1);
+}
+
+</style>
+""",
+unsafe_allow_html=True)
 
 
-if not os.path.exists(USER_FILE):
-    with open(USER_FILE, "w") as f:
-        json.dump({}, f)
+
+# ---------- DATABASE ----------
+
+
+FILE="users.json"
+
+
+if not os.path.exists(FILE):
+
+    with open(FILE,"w") as f:
+        json.dump({},f)
 
 
 
 def load_users():
-    with open(USER_FILE, "r") as f:
+
+    with open(FILE,"r") as f:
         return json.load(f)
 
 
 
-def save_users(users):
-    with open(USER_FILE, "w") as f:
-        json.dump(users, f, indent=4)
+def save_users(data):
+
+    with open(FILE,"w") as f:
+        json.dump(data,f,indent=4)
 
 
 
-def hash_password(password):
+def encrypt(password):
+
     return hashlib.sha256(
         password.encode()
     ).hexdigest()
@@ -44,13 +88,13 @@ def hash_password(password):
 
 def register(username,password):
 
-    users = load_users()
+    users=load_users()
 
     if username in users:
         return False
 
-    users[username] = {
-        "password": hash_password(password),
+    users[username]={
+        "password":encrypt(password),
         "history":[]
     }
 
@@ -62,73 +106,150 @@ def register(username,password):
 
 def login(username,password):
 
-    users = load_users()
+    users=load_users()
 
     if username in users:
-        return users[username]["password"] == hash_password(password)
+
+        return users[username]["password"]==encrypt(password)
 
     return False
 
 
 
-# ---------------- SESSION ----------------
+# ---------- SESSION ----------
+
 
 if "logged" not in st.session_state:
     st.session_state.logged=False
 
 
+if "username" not in st.session_state:
+    st.session_state.username=""
 
-# ---------------- LOGIN ----------------
+
+
+# ---------- LOGIN PAGE ----------
+
 
 if not st.session_state.logged:
 
 
-    st.title("🌱 Smart Plant AI")
+    st.markdown(
+        "<div class='main-title'>🌱 Smart Plant AI</div>",
+        unsafe_allow_html=True
+    )
 
 
-    choice = st.radio(
-        "Choose",
-        ["Login","Register"],
+    st.markdown(
+        "<div class='subtitle'>AI powered plant disease detection system</div>",
+        unsafe_allow_html=True
+    )
+
+
+    st.write("")
+
+
+    option=st.radio(
+        "",
+        [
+            "Login",
+            "Register"
+        ],
         horizontal=True
     )
 
 
-    username = st.text_input("Username")
-    password = st.text_input(
+    st.markdown(
+        "<div class='card'>",
+        unsafe_allow_html=True
+    )
+
+
+    username=st.text_input(
+        "Username"
+    )
+
+
+    password=st.text_input(
         "Password",
         type="password"
     )
 
 
-    if choice=="Register":
+    if option=="Register":
 
-        if st.button("Create Account"):
+
+        if st.button(
+            "Create Account",
+            use_container_width=True
+        ):
+
 
             if register(username,password):
-                st.success("Account created")
+
+                st.success(
+                    "Account created. Login now."
+                )
+
             else:
-                st.error("Username already exists")
+
+                st.error(
+                    "Username already exists"
+                )
 
 
 
     else:
 
-        if st.button("Login"):
+
+        if st.button(
+            "Login",
+            use_container_width=True
+        ):
+
 
             if login(username,password):
 
                 st.session_state.logged=True
                 st.session_state.username=username
+
                 st.rerun()
 
             else:
-                st.error("Wrong username or password")
+
+                st.error(
+                    "Wrong username or password"
+                )
 
 
 
-# ---------------- APP ----------------
+    st.markdown(
+        "</div>",
+        unsafe_allow_html=True
+    )
+
+
+
+# ---------- MAIN APP ----------
+
 
 else:
+
+
+    st.sidebar.title(
+        "🌿 Smart Plant AI"
+    )
+
+
+    page=st.sidebar.selectbox(
+        "Navigation",
+        [
+            "Dashboard",
+            "Profile",
+            "Analyze Plant",
+            "Reports"
+        ]
+    )
 
 
     st.sidebar.success(
@@ -136,91 +257,171 @@ else:
     )
 
 
-    page = st.sidebar.selectbox(
-        "Menu",
-        [
-            "Dashboard",
-            "Analyze Leaf",
-            "History"
-        ]
-    )
+# ---------- DASHBOARD ----------
 
 
     if page=="Dashboard":
 
-        st.title("🌿 Smart Plant Dashboard")
+
+        st.markdown(
+            "<div class='main-title'>Dashboard</div>",
+            unsafe_allow_html=True
+        )
+
+
+        c1,c2,c3=st.columns(3)
+
+
+        c1.metric(
+            "AI Status",
+            "Online"
+        )
+
+
+        c2.metric(
+            "Reports",
+            "0"
+        )
+
+
+        c3.metric(
+            "Accuracy",
+            "AI Ready"
+        )
+
 
         st.info(
             """
-            Upload a leaf image.
-            The AI will analyze possible plant diseases.
+            Welcome to Smart Plant AI.
+
+            Features:
+            ✓ Disease detection
+            ✓ Plant health analysis
+            ✓ Treatment recommendations
+            ✓ Digital reports
             """
         )
 
 
 
-    elif page=="Analyze Leaf":
+# ---------- PROFILE ----------
 
 
-        st.title("🔍 Plant Analysis")
+    elif page=="Profile":
 
 
-        image = st.file_uploader(
+        st.title(
+            "👤 User Profile"
+        )
+
+
+        st.write(
+            "Username:",
+            st.session_state.username
+        )
+
+
+        st.success(
+            "Account secured"
+        )
+
+
+
+# ---------- ANALYSIS ----------
+
+
+    elif page=="Analyze Plant":
+
+
+        st.title(
+            "🔍 Plant Analysis"
+        )
+
+
+        image=st.file_uploader(
             "Upload leaf image",
-            type=["jpg","png","jpeg"]
+            type=[
+                "png",
+                "jpg",
+                "jpeg"
+            ]
         )
 
 
         if image:
 
 
-            img = Image.open(image)
-
             st.image(
-                img,
-                caption="Uploaded Leaf",
+                image,
+                caption="Uploaded Plant",
                 use_container_width=True
             )
 
 
-            if st.button("Analyze"):
+            if st.button(
+                "Start Analysis"
+            ):
 
 
                 st.warning(
-                    "AI connection will be added here."
+                    "AI model will analyze the leaf here."
                 )
 
 
-                users = load_users()
+                users=load_users()
+
 
                 users[
                     st.session_state.username
                 ]["history"].append(
                     {
                         "date":str(datetime.now()),
-                        "result":"Pending AI model"
+                        "result":"Waiting for AI model"
                     }
                 )
+
 
                 save_users(users)
 
 
 
-    elif page=="History":
+# ---------- REPORTS ----------
 
-        st.title("📄 My Reports")
 
-        users = load_users()
+    elif page=="Reports":
 
-        for item in users[
+
+        st.title(
+            "📄 Analysis Reports"
+        )
+
+
+        users=load_users()
+
+
+        reports=users[
             st.session_state.username
-        ]["history"]:
-
-            st.write(item)
+        ]["history"]
 
 
+        if reports:
 
-    if st.sidebar.button("Logout"):
+            for r in reports:
+                st.write(r)
+
+        else:
+
+            st.info(
+                "No reports available yet."
+            )
+
+
+
+    if st.sidebar.button(
+        "Logout"
+    ):
 
         st.session_state.logged=False
+        st.session_state.username=""
+
         st.rerun()
