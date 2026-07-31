@@ -1,7 +1,6 @@
 import streamlit as st
-import tensorflow as tf
-import numpy as np
 from PIL import Image
+import requests
 import json
 import hashlib
 import os
@@ -15,8 +14,6 @@ st.set_page_config(
 )
 
 
-# ---------------- USER DATABASE ----------------
-
 USER_FILE = "users.json"
 
 
@@ -25,14 +22,17 @@ if not os.path.exists(USER_FILE):
         json.dump({}, f)
 
 
+
 def load_users():
     with open(USER_FILE, "r") as f:
         return json.load(f)
 
 
+
 def save_users(users):
     with open(USER_FILE, "w") as f:
         json.dump(users, f, indent=4)
+
 
 
 def hash_password(password):
@@ -42,7 +42,7 @@ def hash_password(password):
 
 
 
-def register(username, password):
+def register(username,password):
 
     users = load_users()
 
@@ -51,7 +51,7 @@ def register(username, password):
 
     users[username] = {
         "password": hash_password(password),
-        "history": []
+        "history":[]
     }
 
     save_users(users)
@@ -60,197 +60,79 @@ def register(username, password):
 
 
 
-def check_login(username,password):
+def login(username,password):
 
     users = load_users()
 
     if username in users:
-
         return users[username]["password"] == hash_password(password)
 
     return False
 
 
 
-# ---------------- AI MODEL ----------------
-
-
-MODEL_PATH = "model.tflite"
-LABEL_PATH = "labels.txt"
-
-
-@st.cache_resource
-def load_ai():
-
-    interpreter = tf.lite.Interpreter(
-        model_path=MODEL_PATH
-    )
-
-    interpreter.allocate_tensors()
-
-    return interpreter
-
-
-
-def load_labels():
-
-    with open(LABEL_PATH,"r") as f:
-        return [
-            line.strip()
-            for line in f.readlines()
-        ]
-
-
-
-def predict(image):
-
-    interpreter = load_ai()
-
-    labels = load_labels()
-
-
-    input_details = interpreter.get_input_details()
-    output_details = interpreter.get_output_details()
-
-
-    size = input_details[0]["shape"][1]
-
-
-    img = image.resize(
-        (size,size)
-    )
-
-
-    img = np.array(img)
-
-    img = np.expand_dims(
-        img,
-        axis=0
-    )
-
-
-    img = img.astype(
-        np.float32
-    ) / 255.0
-
-
-
-    interpreter.set_tensor(
-        input_details[0]["index"],
-        img
-    )
-
-
-    interpreter.invoke()
-
-
-    output = interpreter.get_tensor(
-        output_details[0]["index"]
-    )[0]
-
-
-    index = np.argmax(output)
-
-    confidence = float(
-        output[index] * 100
-    )
-
-
-    return labels[index], confidence
-
-
-
 # ---------------- SESSION ----------------
-
 
 if "logged" not in st.session_state:
     st.session_state.logged=False
 
 
-if "user" not in st.session_state:
-    st.session_state.user=""
-
-
 
 # ---------------- LOGIN ----------------
-
 
 if not st.session_state.logged:
 
 
-    st.title(
-        "🌱 Smart Plant AI"
-    )
+    st.title("🌱 Smart Plant AI")
 
 
-    option = st.radio(
+    choice = st.radio(
         "Choose",
-        [
-            "Login",
-            "Register"
-        ]
+        ["Login","Register"],
+        horizontal=True
     )
 
 
-    username = st.text_input(
-        "Username"
-    )
-
+    username = st.text_input("Username")
     password = st.text_input(
         "Password",
         type="password"
     )
 
 
-
-    if option=="Register":
-
+    if choice=="Register":
 
         if st.button("Create Account"):
 
             if register(username,password):
-
-                st.success(
-                    "Account created"
-                )
-
+                st.success("Account created")
             else:
-
-                st.error(
-                    "Username already exists"
-                )
+                st.error("Username already exists")
 
 
 
     else:
 
-
         if st.button("Login"):
 
-
-            if check_login(username,password):
+            if login(username,password):
 
                 st.session_state.logged=True
-                st.session_state.user=username
-
+                st.session_state.username=username
                 st.rerun()
 
             else:
-
-                st.error(
-                    "Invalid login"
-                )
+                st.error("Wrong username or password")
 
 
 
-# ---------------- MAIN APP ----------------
-
+# ---------------- APP ----------------
 
 else:
 
 
     st.sidebar.success(
-        st.session_state.user
+        st.session_state.username
     )
 
 
@@ -264,21 +146,14 @@ else:
     )
 
 
-
     if page=="Dashboard":
 
-        st.title(
-            "🌿 Plant Disease Dashboard"
-        )
+        st.title("🌿 Smart Plant Dashboard")
 
         st.info(
             """
-            Upload a leaf image to get:
-            
-            • Disease prediction
-            • Confidence score
-            • Treatment advice
-            • Prevention tips
+            Upload a leaf image.
+            The AI will analyze possible plant diseases.
             """
         )
 
@@ -287,99 +162,45 @@ else:
     elif page=="Analyze Leaf":
 
 
-        st.title(
-            "🔍 AI Plant Analysis"
-        )
+        st.title("🔍 Plant Analysis")
 
 
-        file = st.file_uploader(
+        image = st.file_uploader(
             "Upload leaf image",
-            type=[
-                "png",
-                "jpg",
-                "jpeg"
-            ]
+            type=["jpg","png","jpeg"]
         )
 
 
-        if file:
+        if image:
 
 
-            image = Image.open(file)
-
+            img = Image.open(image)
 
             st.image(
-                image,
-                caption="Leaf Image",
+                img,
+                caption="Uploaded Leaf",
                 use_container_width=True
             )
 
 
-
-            if st.button(
-                "Analyze"
-            ):
+            if st.button("Analyze"):
 
 
-                with st.spinner(
-                    "AI analyzing..."
-                ):
-
-
-                    disease,confidence = predict(image)
-
-
-
-                st.success(
-                    "Analysis Complete"
+                st.warning(
+                    "AI connection will be added here."
                 )
 
 
-                st.subheader(
-                    "AI Prediction"
-                )
-
-
-                st.write(
-                    "Disease:",
-                    disease
-                )
-
-
-                st.write(
-                    "Confidence:",
-                    f"{confidence:.2f}%"
-                )
-
-
-
-                st.subheader(
-                    "Recommendation"
-                )
-
-
-                st.write(
-                    """
-                    Remove infected leaves,
-                    improve crop hygiene,
-                    and apply suitable treatment.
-                    """
-                )
-
-
-                users=load_users()
-
+                users = load_users()
 
                 users[
-                    st.session_state.user
+                    st.session_state.username
                 ]["history"].append(
                     {
                         "date":str(datetime.now()),
-                        "result":disease,
-                        "confidence":confidence
+                        "result":"Pending AI model"
                     }
                 )
-
 
                 save_users(users)
 
@@ -387,31 +208,19 @@ else:
 
     elif page=="History":
 
+        st.title("📄 My Reports")
 
-        st.title(
-            "📄 Analysis History"
-        )
+        users = load_users()
 
-
-        users=load_users()
-
-
-        history=users[
-            st.session_state.user
-        ]["history"]
-
-
-        for item in history:
+        for item in users[
+            st.session_state.username
+        ]["history"]:
 
             st.write(item)
 
 
 
-    if st.sidebar.button(
-        "Logout"
-    ):
+    if st.sidebar.button("Logout"):
 
         st.session_state.logged=False
-        st.session_state.user=""
-
         st.rerun()
