@@ -1,322 +1,178 @@
 import streamlit as st
-from PIL import Image
-import numpy as np
-import tensorflow as tf
-import requests
+import json
+import hashlib
 import os
 from datetime import datetime
 
-
+# Page settings
 st.set_page_config(
     page_title="Smart Plant Disease Detector",
-    page_icon="🌿",
+    page_icon="🌱",
     layout="centered"
 )
 
-
-st.title("🌿 Smart Plant Disease Detector")
-
-st.write(
-    "Upload a plant leaf image and the AI will analyze possible diseases."
-)
-
-st.warning(
-    "AI predictions are not a replacement for agricultural experts."
-)
+USER_FILE = "users.json"
 
 
-MODEL_URL = (
-    "https://huggingface.co/animeshakr/"
-    "plant-disease-efficientnetv2s/resolve/main/"
-    "model_float16_quant.tflite"
-)
+# ---------------- USER SYSTEM ----------------
 
-MODEL_PATH = "plant_model.tflite"
+def hash_password(password):
+    return hashlib.sha256(password.encode()).hexdigest()
 
 
-CLASS_NAMES = [
-    "Apple - Apple Scab",
-    "Apple - Black Rot",
-    "Apple - Cedar Apple Rust",
-    "Apple - Healthy",
-    "Blueberry - Healthy",
-    "Cherry - Powdery Mildew",
-    "Cherry - Healthy",
-    "Corn - Cercospora Leaf Spot",
-    "Corn - Common Rust",
-    "Corn - Northern Leaf Blight",
-    "Corn - Healthy",
-    "Grape - Black Rot",
-    "Grape - Esca",
-    "Grape - Leaf Blight",
-    "Grape - Healthy",
-    "Orange - Huanglongbing",
-    "Peach - Bacterial Spot",
-    "Peach - Healthy",
-    "Pepper - Bacterial Spot",
-    "Pepper - Healthy",
-    "Potato - Early Blight",
-    "Potato - Late Blight",
-    "Potato - Healthy",
-    "Raspberry - Healthy",
-    "Soybean - Healthy",
-    "Squash - Powdery Mildew",
-    "Strawberry - Leaf Scorch",
-    "Strawberry - Healthy",
-    "Tomato - Bacterial Spot",
-    "Tomato - Early Blight",
-    "Tomato - Late Blight",
-    "Tomato - Leaf Mold",
-    "Tomato - Septoria Leaf Spot",
-    "Tomato - Spider Mites",
-    "Tomato - Target Spot",
-    "Tomato - Yellow Leaf Curl Virus",
-    "Tomato - Mosaic Virus",
-    "Tomato - Healthy"
-]
+def load_users():
+    if os.path.exists(USER_FILE):
+        with open(USER_FILE, "r") as file:
+            return json.load(file)
+    return {}
 
 
-@st.cache_resource
-def load_model():
-
-    if not os.path.exists(MODEL_PATH):
-
-        with st.spinner("Downloading AI model..."):
-
-            r = requests.get(
-                MODEL_URL,
-                timeout=300
-            )
-
-            r.raise_for_status()
-
-            with open(
-                MODEL_PATH,
-                "wb"
-            ) as f:
-                f.write(r.content)
+def save_users(users):
+    with open(USER_FILE, "w") as file:
+        json.dump(users, file, indent=4)
 
 
-    interpreter = tf.lite.Interpreter(
-        model_path=MODEL_PATH
+def register(username, password):
+    users = load_users()
+
+    if username in users:
+        return False, "Username already exists"
+
+    users[username] = {
+        "password": hash_password(password),
+        "joined": str(datetime.now())
+    }
+
+    save_users(users)
+    return True, "Registration successful"
+
+
+def login(username, password):
+    users = load_users()
+
+    if username in users:
+        if users[username]["password"] == hash_password(password):
+            return True
+
+    return False
+
+
+# ---------------- SESSION ----------------
+
+if "logged_in" not in st.session_state:
+    st.session_state.logged_in = False
+
+if "username" not in st.session_state:
+    st.session_state.username = ""
+
+
+# ---------------- LOGIN PAGE ----------------
+
+def login_page():
+
+    st.title("🌱 Smart Plant Disease Detector")
+
+    menu = st.selectbox(
+        "Choose option",
+        ["Login", "Register"]
     )
 
-    interpreter.allocate_tensors()
+    if menu == "Register":
 
-    return (
-        interpreter,
-        interpreter.get_input_details(),
-        interpreter.get_output_details()
-    )
+        st.subheader("Create Account")
 
-
-def predict(image):
-
-    interpreter, inputs, outputs = load_model()
-
-    size = inputs[0]["shape"]
-
-    img = image.resize(
-        (
-            size[2],
-            size[1]
-        )
-    )
-
-
-    img = np.array(img).astype(
-        np.float32
-    )
-
-
-    img = img / 255.0
-
-
-    img = np.expand_dims(
-        img,
-        axis=0
-    )
-
-
-    interpreter.set_tensor(
-        inputs[0]["index"],
-        img
-    )
-
-    interpreter.invoke()
-
-
-    result = interpreter.get_tensor(
-        outputs[0]["index"]
-    )[0]
-
-
-    probabilities = tf.nn.softmax(
-        result
-    ).numpy()
-
-
-    indexes = probabilities.argsort()[-3:][::-1]
-
-
-    predictions=[]
-
-
-    for i in indexes:
-
-        predictions.append(
-            (
-                CLASS_NAMES[i],
-                probabilities[i]
-            )
+        username = st.text_input("Username")
+        password = st.text_input(
+            "Password",
+            type="password"
         )
 
+        if st.button("Register"):
 
-    return predictions
-
-
-
-uploaded = st.file_uploader(
-    "Upload leaf image",
-    type=[
-        "jpg",
-        "jpeg",
-        "png"
-    ]
-)
-
-
-if uploaded:
-
-
-    image = Image.open(
-        uploaded
-    ).convert("RGB")
-
-
-    st.image(
-        image,
-        caption="Uploaded Leaf",
-        use_container_width=True
-    )
-
-
-    if st.button(
-        "ANALYZE LEAF"
-    ):
-
-
-        try:
-
-            with st.spinner(
-                "AI analysing..."
-            ):
-
-
-                results = predict(
-                    image
+            if username and password:
+                success, message = register(
+                    username,
+                    password
                 )
 
-
-            st.divider()
-
-            st.subheader(
-                "AI Prediction"
-            )
-
-
-            best = results[0]
-
-
-            st.write(
-                "Prediction:",
-                best[0]
-            )
-
-
-            st.write(
-                "Confidence:",
-                f"{best[1]*100:.2f}%"
-            )
-
-
-            st.write(
-                "Analysis Time:",
-                datetime.now()
-            )
-
-
-            st.subheader(
-                "Top 3 Results"
-            )
-
-
-            for name,score in results:
-
-                st.write(
-                    f"{name} : {score*100:.2f}%"
-                )
-
-
-            if "Healthy" in best[0]:
-
-                st.success(
-                    "The plant appears healthy."
-                )
+                if success:
+                    st.success(message)
+                else:
+                    st.error(message)
 
             else:
-
-                st.error(
-                    "Possible disease detected."
-                )
+                st.warning("Fill all fields")
 
 
-                st.subheader(
-                    "Recommendations"
-                )
+    else:
+
+        st.subheader("Login")
+
+        username = st.text_input("Username")
+        password = st.text_input(
+            "Password",
+            type="password"
+        )
+
+        if st.button("Login"):
+
+            if login(username, password):
+
+                st.session_state.logged_in = True
+                st.session_state.username = username
+
+                st.success("Login successful")
+                st.rerun()
+
+            else:
+                st.error("Wrong username or password")
 
 
-                st.write(
-                    """
-                    - Remove severely affected leaves.
-                    - Keep the farm area clean.
-                    - Avoid excessive leaf wetness.
-                    - Monitor nearby plants.
-                    - Seek expert confirmation before treatment.
-                    """
-                )
+# ---------------- MAIN APP ----------------
 
+def detector_page():
 
-        except Exception as e:
+    st.title("🌿 AI Plant Disease Detector")
 
-            st.error(
-                "Prediction failed"
-            )
-
-            st.code(
-                str(e)
-            )
-
-
-else:
+    st.write(
+        f"Welcome {st.session_state.username}"
+    )
 
     st.info(
-        "Upload a leaf image to start."
+        "Upload a plant leaf image to detect possible diseases."
+    )
+
+    uploaded_file = st.file_uploader(
+        "Upload leaf image",
+        type=["jpg", "jpeg", "png"]
     )
 
 
-st.divider()
+    if uploaded_file:
+
+        st.image(
+            uploaded_file,
+            caption="Uploaded Leaf",
+            use_container_width=True
+        )
+
+        st.warning(
+            "AI model connection will be added next."
+        )
 
 
-st.subheader(
-    "About the Project"
-)
+    if st.button("Logout"):
+
+        st.session_state.logged_in = False
+        st.session_state.username = ""
+        st.rerun()
 
 
-st.write(
-    """
-    Smart Plant Disease Detector is an AI-based agriculture
-    project that analyzes plant leaf images and provides
-    possible disease predictions.
-    """
-)
+
+# ---------------- RUN ----------------
+
+if st.session_state.logged_in:
+    detector_page()
+
+else:
+    login_page()
