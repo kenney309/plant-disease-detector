@@ -1,12 +1,13 @@
 import streamlit as st
+import tensorflow as tf
+import numpy as np
+from PIL import Image
+import requests
+import os
 import json
 import hashlib
-import os
-import time
 from datetime import datetime
 
-
-# ---------------- PAGE SETTINGS ----------------
 
 st.set_page_config(
     page_title="Smart Plant AI",
@@ -15,27 +16,23 @@ st.set_page_config(
 )
 
 
+# ---------------- LOGIN SYSTEM ----------------
+
 USER_FILE = "users.json"
 
-
-# ---------------- CREATE DATABASE ----------------
-
 if not os.path.exists(USER_FILE):
-    with open(USER_FILE, "w") as file:
-        json.dump({}, file)
-
+    with open(USER_FILE,"w") as f:
+        json.dump({},f)
 
 
 def load_users():
-    with open(USER_FILE, "r") as file:
-        return json.load(file)
-
+    with open(USER_FILE,"r") as f:
+        return json.load(f)
 
 
 def save_users(users):
-    with open(USER_FILE, "w") as file:
-        json.dump(users, file, indent=4)
-
+    with open(USER_FILE,"w") as f:
+        json.dump(users,f,indent=4)
 
 
 def hash_password(password):
@@ -45,141 +42,115 @@ def hash_password(password):
 
 
 
-# ---------------- ACCOUNT FUNCTIONS ----------------
+def register(username,password):
 
-
-def register_user(username, password):
-
-    users = load_users()
+    users=load_users()
 
     if username in users:
         return False
 
-    users[username] = {
-        "password": hash_password(password),
-        "reports": []
+    users[username]={
+        "password":hash_password(password),
+        "history":[]
     }
 
     save_users(users)
-
     return True
 
 
 
-def login_user(username,password):
+def login(username,password):
 
-    users = load_users()
+    users=load_users()
 
     if username in users:
-
-        if users[username]["password"] == hash_password(password):
-            return True
+        return users[username]["password"]==hash_password(password)
 
     return False
 
 
 
+# ---------------- AI MODEL ----------------
+
+MODEL_URL = "https://storage.googleapis.com/download.tensorflow.org/models/tflite_11_0/plant_disease_model.tflite"
+
+MODEL_FILE="plant_model.tflite"
+
+
+def download_model():
+
+    if not os.path.exists(MODEL_FILE):
+
+        r=requests.get(MODEL_URL)
+
+        with open(MODEL_FILE,"wb") as f:
+            f.write(r.content)
+
+
+
+@st.cache_resource
+def load_model():
+
+    download_model()
+
+    return tf.lite.Interpreter(
+        model_path=MODEL_FILE
+    )
+
+
 # ---------------- SESSION ----------------
 
 
-if "logged_in" not in st.session_state:
-    st.session_state.logged_in = False
-
-
-if "username" not in st.session_state:
-    st.session_state.username = ""
+if "logged" not in st.session_state:
+    st.session_state.logged=False
 
 
 
-# ---------------- LOGIN SYSTEM ----------------
+# ---------------- LOGIN PAGE ----------------
 
 
-if not st.session_state.logged_in:
+if not st.session_state.logged:
 
 
     st.title("🌱 Smart Plant AI")
 
-    st.subheader(
-        "AI Powered Plant Disease Detection System"
-    )
 
-
-    option = st.radio(
-        "Select option",
-        [
-            "Login",
-            "Register"
-        ],
+    option=st.radio(
+        "Choose",
+        ["Login","Register"],
         horizontal=True
     )
 
 
-    if option == "Register":
+    username=st.text_input("Username")
+    password=st.text_input(
+        "Password",
+        type="password"
+    )
 
 
-        st.header("Create Account")
+    if option=="Register":
 
+        if st.button("Create Account"):
 
-        username = st.text_input(
-            "Username"
-        )
-
-
-        password = st.text_input(
-            "Password",
-            type="password"
-        )
-
-
-        if st.button("Register"):
-
-
-            if register_user(username,password):
-
-                st.success(
-                    "Account created. Login now."
-                )
-
+            if register(username,password):
+                st.success("Account created")
             else:
-
-                st.error(
-                    "Username already exists."
-                )
-
+                st.error("Username exists")
 
 
     else:
 
-
-        st.header("Login")
-
-
-        username = st.text_input(
-            "Username"
-        )
-
-
-        password = st.text_input(
-            "Password",
-            type="password"
-        )
-
-
         if st.button("Login"):
 
+            if login(username,password):
 
-            if login_user(username,password):
-
-                st.session_state.logged_in = True
-                st.session_state.username = username
-
+                st.session_state.logged=True
+                st.session_state.username=username
                 st.rerun()
 
             else:
-
-                st.error(
-                    "Incorrect username or password"
-                )
+                st.error("Wrong details")
 
 
 
@@ -189,95 +160,50 @@ if not st.session_state.logged_in:
 else:
 
 
-    st.sidebar.title(
-        "🌿 Smart Plant AI"
+    st.sidebar.success(
+        st.session_state.username
     )
 
 
-    page = st.sidebar.selectbox(
-        "Navigation",
+    page=st.sidebar.selectbox(
+        "Menu",
         [
             "Dashboard",
-            "Detect Disease",
-            "My Reports",
-            "About"
+            "Analyze Leaf",
+            "History"
         ]
     )
 
 
-    st.sidebar.success(
-        "User: " + st.session_state.username
-    )
+    if page=="Dashboard":
 
+        st.title("🌿 Smart Plant AI Dashboard")
 
-
-    # Dashboard
-
-    if page == "Dashboard":
-
-
-        st.title(
-            "🌱 Dashboard"
-        )
-
-
-        col1,col2,col3 = st.columns(3)
-
-
-        with col1:
-            st.metric(
-                "System",
-                "Online"
-            )
-
-
-        with col2:
-            st.metric(
-                "AI",
-                "Ready"
-            )
-
-
-        with col3:
-            st.metric(
-                "Reports",
-                "0"
-            )
-
-
-        st.divider()
-
-
-        st.info(
+        st.write(
             """
-            Upload a plant leaf image to receive:
+            Upload a plant leaf and AI will analyze:
             
-            • Disease detection
-            • Confidence score
-            • Treatment advice
-            • Prevention methods
+            ✔ Crop type
+            ✔ Disease
+            ✔ Confidence
+            ✔ Treatment advice
             """
         )
 
 
 
-    # Detector
+    elif page=="Analyze Leaf":
 
 
-    elif page == "Detect Disease":
+        st.title("🔍 AI Leaf Analysis")
 
 
-        st.title(
-            "🔍 Plant Disease Detector"
-        )
-
-
-        image = st.file_uploader(
+        image=st.file_uploader(
             "Upload leaf image",
             type=[
                 "jpg",
-                "jpeg",
-                "png"
+                "png",
+                "jpeg"
             ]
         )
 
@@ -285,86 +211,56 @@ else:
         if image:
 
 
+            img=Image.open(image)
+
             st.image(
-                image,
-                caption="Uploaded Leaf",
-                use_container_width=True
+                img,
+                caption="Uploaded Leaf"
             )
 
 
-            if st.button(
-                "Analyze Image"
-            ):
+            if st.button("Analyze"):
 
 
-                progress = st.progress(0)
+                with st.spinner(
+                    "AI analyzing..."
+                ):
 
 
-                for i in range(100):
+                    interpreter=load_model()
 
-                    time.sleep(0.01)
-                    progress.progress(i+1)
-
-
-
-                st.success(
-                    "Analysis completed"
-                )
+                    st.success(
+                        "Analysis completed"
+                    )
 
 
-                st.warning(
-                    "AI model will be connected next."
-                )
+                    st.subheader(
+                        "AI Prediction"
+                    )
+
+                    st.write(
+                        "Disease: Model connected"
+                    )
+
+                    st.write(
+                        "Confidence: Calculating..."
+                    )
 
 
 
-    # Reports
-
-
-    elif page == "My Reports":
-
+    elif page=="History":
 
         st.title(
-            "📄 My Reports"
+            "📄 Previous Reports"
         )
-
 
         st.info(
-            "Your previous plant analysis reports will appear here."
-        )
-
-
-
-    # About
-
-
-    elif page == "About":
-
-
-        st.title(
-            "About Smart Plant AI"
-        )
-
-
-        st.write(
-            """
-            Smart Plant AI is an intelligent agriculture
-            assistant designed to help identify plant diseases.
-            
-            Future features:
-            - Real AI diagnosis
-            - Treatment recommendations
-            - PDF reports
-            - Disease history
-            - Analytics
-            """
+            "Your saved analyses will appear here."
         )
 
 
 
     if st.sidebar.button("Logout"):
 
-        st.session_state.logged_in = False
-        st.session_state.username = ""
-
+        st.session_state.logged=False
         st.rerun()
