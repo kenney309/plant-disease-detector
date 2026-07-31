@@ -6,244 +6,270 @@ from datetime import datetime
 import os
 
 
-# PAGE SETTINGS
 st.set_page_config(
     page_title="Smart Plant Disease Detector",
     page_icon="🌿",
-    layout="centered"
+    layout="wide"
 )
 
 
-# TITLE
 st.title("🌿 Smart Plant Disease Detector")
-st.write("AI-powered plant leaf disease identification system")
+st.write("AI system for detecting plant diseases from leaf images")
 
 
-# MODEL LOADING
-MODEL_PATH = "model_float16_quant.tflite"
+MODEL_FILE = "model_float16_quant.tflite"
 
 
 @st.cache_resource
 def load_model():
-    interpreter = tf.lite.Interpreter(model_path=MODEL_PATH)
+
+    interpreter = tf.lite.Interpreter(
+        model_path=MODEL_FILE
+    )
+
     interpreter.allocate_tensors()
+
     return interpreter
 
 
-try:
-    interpreter = load_model()
-    st.success("AI Model Loaded Successfully")
-except Exception as e:
-    st.error("Model not found. Upload model_float16_quant.tflite")
+
+if not os.path.exists(MODEL_FILE):
+
+    st.error(
+        "Model file missing. Upload model_float16_quant.tflite"
+    )
+
     st.stop()
 
 
-# CLASS LABELS
-CLASS_NAMES = [
-    "Apple Scab",
-    "Apple Black Rot",
-    "Apple Healthy",
-    "Corn Leaf Blight",
-    "Corn Healthy",
-    "Grape Black Rot",
-    "Grape Healthy",
-    "Potato Early Blight",
-    "Potato Late Blight",
-    "Potato Healthy",
-    "Tomato Early Blight",
-    "Tomato Late Blight",
-    "Tomato Healthy"
+
+interpreter = load_model()
+
+
+
+classes = [
+"Apple Scab",
+"Apple Black Rot",
+"Apple Healthy",
+"Corn Blight",
+"Corn Healthy",
+"Grape Black Rot",
+"Grape Healthy",
+"Potato Early Blight",
+"Potato Late Blight",
+"Potato Healthy",
+"Tomato Early Blight",
+"Tomato Late Blight",
+"Tomato Healthy"
 ]
 
 
-# RECOMMENDATIONS
 
-def advice(result):
+def preprocess(img):
 
-    if "Healthy" in result:
-        return """
-Your plant appears healthy.
+    img = img.resize((224,224))
 
-Recommendations:
-- Continue proper watering.
-- Maintain sunlight exposure.
-- Monitor regularly for changes.
-"""
-
-    elif "Blight" in result:
-        return """
-Possible blight disease detected.
-
-Actions:
-- Remove infected leaves.
-- Avoid excessive watering.
-- Improve air circulation.
-- Apply recommended fungicide.
-"""
-
-    elif "Scab" in result:
-        return """
-Possible scab disease detected.
-
-Actions:
-- Remove affected leaves.
-- Keep leaves dry.
-- Use suitable fungicide.
-- Monitor plant development.
-"""
-
-    else:
-        return """
-Possible fungal infection detected.
-
-Actions:
-- Separate infected plants.
-- Remove damaged parts.
-- Maintain good farming hygiene.
-"""
-
-
-# IMAGE PREPROCESSING
-
-def prepare_image(image):
-
-    img = image.resize((224,224))
     img = np.array(img)
 
-    img = img.astype(np.float32) / 255.0
+    img = img.astype(np.float32)
 
-    img = np.expand_dims(img,axis=0)
+    img = img / 255.0
+
+    img = np.expand_dims(img,0)
 
     return img
 
 
 
-# PREDICTION
+def prediction(image):
 
-def predict(image):
+    input_data = interpreter.get_input_details()
 
-    input_details = interpreter.get_input_details()
-    output_details = interpreter.get_output_details()
+    output_data = interpreter.get_output_details()
 
-    data = prepare_image(image)
+
+    processed = preprocess(image)
+
 
     interpreter.set_tensor(
-        input_details[0]['index'],
-        data
+        input_data[0]["index"],
+        processed
     )
+
 
     interpreter.invoke()
 
-    prediction = interpreter.get_tensor(
-        output_details[0]['index']
+
+    output = interpreter.get_tensor(
+        output_data[0]["index"]
     )
 
-    index = np.argmax(prediction)
 
-    confidence = float(np.max(prediction))*100
+    result = np.argmax(output)
 
-    if index < len(CLASS_NAMES):
-        disease = CLASS_NAMES[index]
+    confidence = np.max(output)*100
+
+
+    if result < len(classes):
+
+        return classes[result], confidence
+
     else:
-        disease = "Unknown"
+
+        return "Unknown", confidence
 
 
-    return disease, confidence
+
+
+def recommendations(disease):
+
+    if "Healthy" in disease:
+
+        return """
+✅ Plant looks healthy.
+
+Maintain:
+• Proper watering
+• Good sunlight
+• Regular monitoring
+"""
+
+
+    if "Blight" in disease:
+
+        return """
+⚠ Possible Blight disease.
+
+Actions:
+• Remove infected leaves
+• Improve air circulation
+• Avoid overwatering
+• Apply suitable treatment
+"""
+
+
+    if "Scab" in disease:
+
+        return """
+⚠ Possible Apple Scab.
+
+Actions:
+• Remove affected leaves
+• Keep leaves dry
+• Use recommended fungicide
+"""
+
+
+    return """
+⚠ Possible disease detected.
+
+Actions:
+• Isolate affected plant
+• Remove damaged parts
+• Monitor progress
+"""
 
 
 
-# UPLOAD IMAGE
 
 uploaded = st.file_uploader(
-    "Upload a plant leaf image",
-    type=["jpg","jpeg","png"]
+    "Upload plant leaf image",
+    type=["png","jpg","jpeg"]
 )
+
 
 
 if uploaded:
 
-    image = Image.open(uploaded)
+
+    img = Image.open(uploaded)
+
 
     st.image(
-        image,
+        img,
         caption="Uploaded Leaf",
-        use_container_width=True
+        width=400
     )
 
 
-    if st.button("🔍 Analyse Plant"):
 
-        with st.spinner("AI analysing image..."):
+    if st.button("🔍 Detect Disease"):
 
-            disease, confidence = predict(image)
+
+        disease, confidence = prediction(img)
+
 
 
         st.subheader("🌿 AI Prediction")
+
 
         st.write(
             "Plant Disease:",
             disease
         )
 
+
         st.write(
             "Confidence:",
             f"{confidence:.2f}%"
         )
 
+
         st.write(
             "Analysis Time:",
-            datetime.now().strftime("%H:%M:%S")
+            datetime.now()
         )
 
 
-        if confidence < 60:
+
+        if confidence < 50:
 
             st.warning(
-                "Low confidence. Try uploading a clearer leaf image."
+            "Low confidence. Upload a clearer leaf image."
             )
 
 
-        st.subheader("🌱 Recommended Actions")
+        st.subheader("🌱 Recommendations")
+
 
         st.info(
-            advice(disease)
+            recommendations(disease)
         )
+
 
 
         report = f"""
 SMART PLANT DISEASE DETECTOR REPORT
 
-Prediction:
+Disease:
 {disease}
 
 Confidence:
 {confidence:.2f}%
 
-Date:
+Time:
 {datetime.now()}
 """
 
 
         st.download_button(
-            "Download Analysis Report",
+            "Download Report",
             report,
             file_name="plant_report.txt"
         )
 
 
-# ABOUT
 
 st.divider()
+
 
 st.subheader("About The Project")
 
 st.write(
 """
 Smart Plant Disease Detector uses Artificial Intelligence
-and image recognition technology to identify possible
-plant diseases from leaf images.
-
-It helps farmers and students understand plant health
-and provides recommended management practices.
+to analyse plant leaves and identify possible diseases.
+It provides farmers and students with quick diagnosis
+and recommended management practices.
 """
 )
